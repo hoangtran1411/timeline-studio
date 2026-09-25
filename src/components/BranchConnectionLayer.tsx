@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TimelineTrack, NodeDependency, TimelineNode } from '@/types/timeline';
 import { dateToPixelX, compareDateStrings } from '@/utils/date-utils';
 
@@ -42,45 +42,47 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
   hoveredTrackId,
   selectedNodeId
 }) => {
-  // Helper to compute node bounding coordinates and knot position on the clothesline
-  const computeNodeCoords = (node: TimelineNode, trackIndex: number): NodeCoords => {
-    const leftX = dateToPixelX(node.startDate, originDate, pxPerDay);
-    let width = 160;
-    if (node.endDate) {
-      const endX = dateToPixelX(node.endDate, originDate, pxPerDay);
-      width = Math.max(160, Math.min(360, endX - leftX + 160));
-    }
-    const rightX = leftX + width;
-    const lane = node.lane || 0;
-    const trackTop = getTrackTopOffset(trackIndex);
-    const wireY = trackTop + 28; // The horizontal clothesline wire Y
-    const knotX = leftX + 24;   // Center of the knot peg (left-6 = 24px)
-    const knotY = wireY;
-    const cardTop = trackTop + 56 + lane * 130;
-    const cardBottom = cardTop + 110;
-    const centerY = (cardTop + cardBottom) / 2;
-
-    return {
-      node,
-      trackIndex,
-      lane,
-      leftX,
-      rightX,
-      knotX,
-      knotY,
-      cardTop,
-      cardBottom,
-      centerY
-    };
-  };
-
   // Map all nodes by id for fast lookup
-  const nodeMap = new Map<string, NodeCoords>();
-  timelines.forEach((track, trackIndex) => {
-    track.nodes.forEach((node) => {
-      nodeMap.set(node.id, computeNodeCoords(node, trackIndex));
+  const nodeMap = useMemo(() => {
+    const computeNodeCoords = (node: TimelineNode, trackIndex: number): NodeCoords => {
+      const leftX = dateToPixelX(node.startDate, originDate, pxPerDay);
+      let width = 160;
+      if (node.endDate) {
+        const endX = dateToPixelX(node.endDate, originDate, pxPerDay);
+        width = Math.max(160, Math.min(360, endX - leftX + 160));
+      }
+      const rightX = leftX + width;
+      const lane = node.lane || 0;
+      const trackTop = getTrackTopOffset(trackIndex);
+      const wireY = trackTop + 28; // The horizontal clothesline wire Y
+      const knotX = leftX + 24;   // Center of the knot peg (left-6 = 24px)
+      const knotY = wireY;
+      const cardTop = trackTop + 56 + lane * 130;
+      const cardBottom = cardTop + 110;
+      const centerY = (cardTop + cardBottom) / 2;
+
+      return {
+        node,
+        trackIndex,
+        lane,
+        leftX,
+        rightX,
+        knotX,
+        knotY,
+        cardTop,
+        cardBottom,
+        centerY
+      };
+    };
+
+    const map = new Map<string, NodeCoords>();
+    timelines.forEach((track, trackIndex) => {
+      track.nodes.forEach((node) => {
+        map.set(node.id, computeNodeCoords(node, trackIndex));
+      });
     });
-  });
+    return map;
+  }, [timelines, originDate, pxPerDay, getTrackTopOffset]);
 
   // 1. Generate structured clothesline wires for each track
   const trackWires = timelines.map((track, trackIndex) => {
