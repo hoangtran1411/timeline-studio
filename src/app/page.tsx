@@ -59,25 +59,37 @@ export default function TimelineStudioPage() {
 
   // Compute overall timeline date span dynamically encompassing all nodes and today
   const { originDate, totalDays } = useMemo(() => {
-    let minDate = todayDateStr;
-    let maxDate = todayDateStr;
+    let minTime = parseDate(todayDateStr).getTime();
+    let maxTime = minTime;
 
     data.timelines.forEach(track => {
       track.nodes.forEach(node => {
-        if (!minDate || node.startDate < minDate) minDate = node.startDate;
-        const end = node.endDate || node.startDate;
-        if (!maxDate || end > maxDate) maxDate = end;
+        const sTime = parseDate(node.startDate).getTime();
+        const eTime = node.endDate ? parseDate(node.endDate).getTime() : sTime;
+        if (sTime < minTime) minTime = sTime;
+        if (eTime > maxTime) maxTime = eTime;
       });
     });
 
-    const origin = parseDate(minDate);
+    const origin = new Date(minTime);
     // Add extra padding days for smooth scrolling
-    const days = Math.max(180, diffInDays(minDate, maxDate) + 60);
+    const spanDays = Math.round((maxTime - minTime) / (1000 * 60 * 60 * 24));
+    const days = Math.max(180, spanDays + 60);
     return { originDate: origin, totalDays: days };
   }, [data.timelines, todayDateStr]);
 
-  // Base 6px per day at 100% zoom (1 week = ~42px)
-  const pxPerDay = 6.2 * zoom;
+  // Adaptive base pixel resolution per day supporting both sprints and millennia
+  const pxPerDay = useMemo(() => {
+    if (totalDays > 3650) {
+      // Historical macro scale: target ~24,000px canvas width for 1,500 years
+      const targetWidth = Math.min(32000, Math.max(12000, Math.round(totalDays * 0.045)));
+      return (targetWidth / totalDays) * zoom;
+    }
+    if (totalDays > 730) {
+      return 1.8 * zoom;
+    }
+    return 6.2 * zoom;
+  }, [totalDays, zoom]);
 
   // Total nodes calculation
   const totalNodesCount = useMemo(() => {
@@ -352,10 +364,13 @@ export default function TimelineStudioPage() {
           onSelectTrack={handleSelectTrack}
         />
 
+        {/* Dedicated Buffer separating Canvas Scrollbar from Bottom Resize Splitter */}
+        <div className="h-2 w-full bg-[#101114] flex-shrink-0" />
+
         {/* Horizontal Resizable Splitter Handle */}
         <div
-          className={`relative z-40 h-1.5 w-full flex-shrink-0 cursor-row-resize group flex items-center justify-center transition-colors ${
-            isResizingBottom ? 'bg-[#ececf0]' : 'bg-[#222328] hover:bg-[#3e404b]'
+          className={`relative z-40 h-2 w-full flex-shrink-0 cursor-row-resize group flex items-center justify-center transition-colors ${
+            isResizingBottom ? 'bg-[#ececf0]' : 'bg-[#1b1c22] hover:bg-[#32343e]'
           }`}
           title="Drag up/down to resize bottom panel (Double-click to collapse/expand)"
           onPointerDown={handleBottomResizePointerDown}

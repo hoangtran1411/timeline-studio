@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { TimelineTrack, NodeDependency, TimelineNode } from '@/types/timeline';
-import { dateToPixelX } from '@/utils/date-utils';
+import { dateToPixelX, compareDateStrings } from '@/utils/date-utils';
 
 interface BranchConnectionLayerProps {
   timelines: TimelineTrack[];
@@ -44,7 +44,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     let width = 160;
     if (node.endDate) {
       const endX = dateToPixelX(node.endDate, originDate, pxPerDay);
-      width = Math.max(160, endX - leftX + 160);
+      width = Math.max(160, Math.min(360, endX - leftX + 160));
     }
     const rightX = leftX + width;
     const lane = node.lane || 0;
@@ -122,7 +122,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     });
 
     // Sort nodes on this track chronologically
-    const sortedNodes = [...track.nodes].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
     if (sortedNodes.length === 0) return;
 
     // Lead-in wire before the first milestone knot
@@ -186,7 +186,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         const childWireY = childTrackTop + 28;
 
         // Find child's first node or default landing point
-        const childSortedNodes = [...track.nodes].sort((a, b) => a.startDate.localeCompare(b.startDate));
+        const childSortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
         let endX = startX + 64;
         const endY = childWireY;
 
@@ -272,7 +272,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     const track = timelines.find((t) => t.id === selectedTrackId);
     if (!track) return null;
 
-    const sortedNodes = [...track.nodes].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
     if (sortedNodes.length === 0) return null;
 
     const coords = sortedNodes.map((n) => nodeMap.get(n.id)).filter(Boolean) as NodeCoords[];

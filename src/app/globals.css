@@ -22,19 +22,25 @@ body {
 }
 
 /* Custom minimal scrollbar for canvas */
+.timeline-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #343642 #131417;
+}
+
 .timeline-scrollbar::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
+  height: 9px;
+  width: 8px;
 }
 .timeline-scrollbar::-webkit-scrollbar-track {
-  background: #121316;
+  background: #131417;
+  border-top: 1px solid #1f2026;
 }
 .timeline-scrollbar::-webkit-scrollbar-thumb {
-  background: #2a2b32;
-  border-radius: 3px;
+  background: #343642;
+  border-radius: 4px;
 }
 .timeline-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #3e404b;
+  background: #4e5162;
 }
 
 /* Notebook Paper Graph Grid (Kẻ ô vở ô ly) */

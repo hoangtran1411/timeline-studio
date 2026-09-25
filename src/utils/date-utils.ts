@@ -5,20 +5,56 @@ export interface DateRange {
 }
 
 export function parseDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
+  if (!dateStr) return new Date();
+  let isBCE = false;
+  let cleanStr = dateStr.trim();
+  if (cleanStr.startsWith('-')) {
+    isBCE = true;
+    cleanStr = cleanStr.slice(1);
+  }
+  const parts = cleanStr.split('-').map(Number);
+  let year = parts[0] || 0;
+  const month = (parts[1] || 1) - 1;
+  const day = parts[2] || 1;
+  if (isBCE) year = -year;
+
+  const d = new Date(0);
+  d.setUTCFullYear(year, month, day);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
 }
 
 export function formatDateStr(d: Date): string {
   const year = d.getUTCFullYear();
   const month = String(d.getUTCMonth() + 1).padStart(2, '0');
   const day = String(d.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  if (year < 0) {
+    return `-${String(Math.abs(year)).padStart(4, '0')}-${month}-${day}`;
+  }
+  return `${String(year).padStart(4, '0')}-${month}-${day}`;
+}
+
+export function formatYearLabel(year: number): string {
+  if (year < 0) return `${Math.abs(year)} BC`;
+  if (year === 0) return '1 BC';
+  if (year < 1000) return `${year} AD`;
+  return `${year}`;
 }
 
 export function formatDisplayDate(dateStr: string): string {
   if (!dateStr) return '';
   const d = parseDate(dateStr);
+  const year = d.getUTCFullYear();
+
+  // Historical dates (BCE or early AD)
+  if (year < 0) {
+    return `${Math.abs(year)} BC`;
+  }
+  if (year < 1200) {
+    return `${year} AD`;
+  }
+
+  // Modern / standard dates
   return d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -27,6 +63,13 @@ export function formatDisplayDate(dateStr: string): string {
 }
 
 export function formatMonthYear(d: Date): string {
+  const year = d.getUTCFullYear();
+  if (year < 0) {
+    return `${Math.abs(year)} BC`;
+  }
+  if (year < 1000) {
+    return `${year} AD`;
+  }
   return d.toLocaleDateString('en-US', {
     month: 'short',
     year: 'numeric',
@@ -80,3 +123,13 @@ export function diffInDays(dateA: string, dateB: string): number {
   const dB = parseDate(dateB).getTime();
   return Math.round((dB - dA) / (1000 * 60 * 60 * 24));
 }
+
+/**
+ * Chronological comparison for sorting date strings (including BCE and CE)
+ */
+export function compareDateStrings(dateA: string, dateB: string): number {
+  const dA = parseDate(dateA).getTime();
+  const dB = parseDate(dateB).getTime();
+  return dA - dB;
+}
+

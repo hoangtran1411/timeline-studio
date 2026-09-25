@@ -1,5 +1,6 @@
 import { getDb } from './db';
 import { TimelineTrack, TimelineNode, NodeDependency, FullTimelineData, NodeStatus, NodePriority } from '@/types/timeline';
+import { parseDate, compareDateStrings } from '@/utils/date-utils';
 
 export function getFullTimelineData(): FullTimelineData {
   const db = getDb();
@@ -97,17 +98,17 @@ export function getFullTimelineData(): FullTimelineData {
  * Assigns lanes to nodes so overlapping date intervals do not visually collide.
  */
 function assignCollisionLanes(nodes: TimelineNode[]): void {
-  // Sort primarily by startDate
-  nodes.sort((a, b) => a.startDate.localeCompare(b.startDate));
+  // Sort primarily by startDate chronologically (supports BCE & CE)
+  nodes.sort((a, b) => compareDateStrings(a.startDate, b.startDate));
 
   const laneEndTimes: number[] = [];
 
   for (const node of nodes) {
-    const startTime = new Date(node.startDate).getTime();
-    // Default duration to 7 days if endDate not provided
+    const startTime = parseDate(node.startDate).getTime();
+    // Default duration to 30 days if endDate not provided
     const endTime = node.endDate
-      ? new Date(node.endDate).getTime()
-      : startTime + 7 * 24 * 60 * 60 * 1000;
+      ? parseDate(node.endDate).getTime()
+      : startTime + 30 * 24 * 60 * 60 * 1000;
 
     let placedLane = -1;
     for (let i = 0; i < laneEndTimes.length; i++) {

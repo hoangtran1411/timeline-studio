@@ -7,7 +7,7 @@ import { ChronoRuler } from './ChronoRuler';
 import { TimelineNodeCard } from './TimelineNodeCard';
 import { BetweenNodeInserter } from './BetweenNodeInserter';
 import { BranchConnectionLayer } from './BranchConnectionLayer';
-import { dateToPixelX, pixelXToDate, getMidpointDate } from '@/utils/date-utils';
+import { dateToPixelX, pixelXToDate, getMidpointDate, compareDateStrings } from '@/utils/date-utils';
 
 export interface ChronoCanvasRef {
   scrollToToday: () => void;
@@ -150,7 +150,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   const canvasWidth = Math.max(1400, Math.round(totalDays * pxPerDay));
   let totalTrackHeights = 0;
   timelines.forEach(t => totalTrackHeights += getTrackHeight(t));
-  const totalCanvasHeight = 64 + totalTrackHeights;
+  const totalCanvasHeight = 64 + totalTrackHeights + 28;
 
   // Handle clicking empty area in a track to create a node at that exact date
   const handleTrackBackgroundClick = (e: React.MouseEvent<HTMLDivElement>, timelineId: string) => {
@@ -161,7 +161,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   };
 
   return (
-    <div className="relative w-full flex-1 flex overflow-hidden min-h-[280px] bg-[#101114]">
+    <div className="relative w-full flex-1 flex overflow-hidden min-h-[280px] bg-[#101114] border-b border-[#222328]">
       {/* Left Dock: Track names, branch metadata, controls */}
       <LeftTrackDock
         timelines={timelines}
@@ -236,13 +236,13 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
           />
 
           {/* Tracks Stack */}
-          <div className="flex flex-col">
+          <div className="flex flex-col pb-6">
             {timelines.map((track) => {
               const trackHeight = getTrackHeight(track);
               const isSelectedTrack = selectedTrackId === track.id;
 
               // Sort nodes chronologically for gap insertion calculation
-              const sortedNodes = [...track.nodes].sort((a, b) => a.startDate.localeCompare(b.startDate));
+              const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
 
               return (
                 <div
@@ -293,7 +293,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                     let nodeWidth = 160;
                     if (node.endDate) {
                       const endX = dateToPixelX(node.endDate, originDate, pxPerDay);
-                      nodeWidth = Math.max(160, endX - startX + 160);
+                      nodeWidth = Math.max(160, Math.min(360, endX - startX + 160));
                     }
 
                     return (
