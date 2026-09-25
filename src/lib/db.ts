@@ -29,6 +29,8 @@ function initSchema(db: DatabaseSync) {
       parent_timeline_id TEXT,
       branch_point_node_id TEXT,
       order_index INTEGER DEFAULT 0,
+      is_archived INTEGER DEFAULT 0,
+      is_visible INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -59,6 +61,16 @@ function initSchema(db: DatabaseSync) {
       FOREIGN KEY (to_node_id) REFERENCES nodes(id) ON DELETE CASCADE
     );
   `);
+
+  // Run column migration for existing databases
+  const columns = db.prepare('PRAGMA table_info(timelines)').all() as Array<{ name: string }>;
+  const colNames = new Set(columns.map(c => c.name));
+  if (!colNames.has('is_archived')) {
+    db.exec('ALTER TABLE timelines ADD COLUMN is_archived INTEGER DEFAULT 0');
+  }
+  if (!colNames.has('is_visible')) {
+    db.exec('ALTER TABLE timelines ADD COLUMN is_visible INTEGER DEFAULT 1');
+  }
 
   // Seed default data if timelines table is empty
   const count = (db.prepare('SELECT COUNT(*) as count FROM timelines').get() as { count: number }).count;

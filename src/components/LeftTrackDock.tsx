@@ -2,13 +2,15 @@
 
 import React from 'react';
 import { TimelineTrack } from '@/types/timeline';
-import { GitFork, Plus, Trash2, CheckCircle2 } from 'lucide-react';
+import { GitFork, Plus, Trash2, CheckCircle2, Eye, EyeOff, Archive } from 'lucide-react';
 
 interface LeftTrackDockProps {
   timelines: TimelineTrack[];
   width: number;
   onAddNodeToTrack: (timelineId: string) => void;
   onBranchTrack: (parentTimelineId: string) => void;
+  onToggleVisibility?: (timelineId: string, isVisible: boolean) => void;
+  onArchiveTrack?: (timelineId: string) => void;
   onDeleteTrack: (timelineId: string) => void;
   getTrackHeight: (track: TimelineTrack) => number;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
@@ -22,6 +24,8 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
   width,
   onAddNodeToTrack,
   onBranchTrack,
+  onToggleVisibility,
+  onArchiveTrack,
   onDeleteTrack,
   getTrackHeight,
   scrollRef,
@@ -29,6 +33,9 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
   selectedTrackId,
   onSelectTrack
 }) => {
+  const visibleTracks = timelines.filter(t => t.isVisible !== false);
+  const hiddenTracks = timelines.filter(t => t.isVisible === false);
+
   return (
     <div
       style={{ width: `${width}px` }}
@@ -38,8 +45,13 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
       <div className="h-16 px-4 py-2 border-b border-[#222328] flex items-center justify-between flex-shrink-0 bg-[#121316]">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-xs text-[#ececf0] uppercase tracking-wider font-mono">
-            Tracks ({timelines.length})
+            Tracks ({visibleTracks.length}{hiddenTracks.length > 0 ? `/${timelines.length}` : ''})
           </span>
+          {hiddenTracks.length > 0 && (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1e2029] text-[#e4e4e7] border border-[#2a2c38]">
+              {hiddenTracks.length} hidden
+            </span>
+          )}
         </div>
         <span className="text-[11px] font-mono text-[#71717a]">Synchronized</span>
       </div>
@@ -49,7 +61,7 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
         ref={scrollRef}
         className="flex-1 overflow-y-hidden flex flex-col divide-y divide-[#222328]"
       >
-        {timelines.map((track) => {
+        {visibleTracks.map((track) => {
           const height = getTrackHeight(track);
           const completedCount = track.nodes.filter(n => n.status === 'completed').length;
           const totalCount = track.nodes.length;
@@ -100,7 +112,10 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                  <div
+                    className="flex items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <button
                       onClick={() => onAddNodeToTrack(track.id)}
                       className="p-1 rounded text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#262832] transition-colors"
@@ -115,11 +130,29 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
                     >
                       <GitFork className="w-3.5 h-3.5" />
                     </button>
+                    {onToggleVisibility && (
+                      <button
+                        onClick={() => onToggleVisibility(track.id, false)}
+                        className="p-1 rounded text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#262832] transition-colors"
+                        title="Hide track from main canvas"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {onArchiveTrack && (
+                      <button
+                        onClick={() => onArchiveTrack(track.id)}
+                        className="p-1 rounded text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#262832] transition-colors"
+                        title="Archive track (preserves in database)"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     {timelines.length > 1 && (
                       <button
                         onClick={() => onDeleteTrack(track.id)}
                         className="p-1 rounded text-[#9e9ea7] hover:text-red-400 hover:bg-[#262832] transition-colors"
-                        title="Delete track"
+                        title="Delete track permanently"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -157,6 +190,67 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
             </div>
           );
         })}
+
+        {/* Hidden Tracks Section */}
+        {hiddenTracks.length > 0 && (
+          <div className="p-3 bg-[#101114] border-t border-[#222328] space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-mono text-[#71717a]">
+              <span className="flex items-center gap-1.5">
+                <EyeOff className="w-3 h-3 text-[#9e9ea7]" />
+                <span>Hidden from Canvas ({hiddenTracks.length})</span>
+              </span>
+              {onToggleVisibility && (
+                <button
+                  onClick={() => hiddenTracks.forEach(t => onToggleVisibility(t.id, true))}
+                  className="text-[10px] text-[#9e9ea7] hover:text-[#ececf0] underline transition-colors"
+                >
+                  Show all
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              {hiddenTracks.map(track => (
+                <div
+                  key={track.id}
+                  className="flex items-center justify-between p-2 rounded bg-[#16171d] border border-[#222328] text-xs hover:border-[#30323c] transition-colors"
+                >
+                  <div className="min-w-0 pr-2">
+                    <span className="font-medium text-[#9e9ea7] truncate block text-[11px]">{track.title}</span>
+                    <span className="text-[10px] font-mono text-[#5f606a]">{track.nodes.length} nodes</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {onToggleVisibility && (
+                      <button
+                        onClick={() => onToggleVisibility(track.id, true)}
+                        className="p-1 rounded text-[#ececf0] bg-[#22242f] hover:bg-[#2b2e3c] transition-colors"
+                        title="Show track on canvas"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {onArchiveTrack && (
+                      <button
+                        onClick={() => onArchiveTrack(track.id)}
+                        className="p-1 rounded text-[#71717a] hover:text-[#ececf0] hover:bg-[#22242f] transition-colors"
+                        title="Archive track"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onDeleteTrack(track.id)}
+                      className="p-1 rounded text-[#71717a] hover:text-red-400 hover:bg-[#22242f] transition-colors"
+                      title="Delete track permanently"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Add Track Action Button in dock */}
         {onOpenAddTimeline && (

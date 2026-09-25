@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Plus, GitFork, Calendar, Search, ZoomIn, ZoomOut, Database, Grid3X3 } from 'lucide-react';
+import { Plus, GitFork, Calendar, Search, ZoomIn, ZoomOut, Database, Grid3X3, Archive, EyeOff } from 'lucide-react';
 
 interface HeaderProps {
   timelineCount: number;
@@ -15,6 +15,10 @@ interface HeaderProps {
   onSearchChange: (query: string) => void;
   gridStyle: 'notebook' | 'dots' | 'plain';
   onToggleGrid: () => void;
+  archivedCount?: number;
+  onOpenArchiveModal?: () => void;
+  hiddenCount?: number;
+  onShowAllTracks?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,7 +32,11 @@ export const Header: React.FC<HeaderProps> = ({
   searchQuery,
   onSearchChange,
   gridStyle,
-  onToggleGrid
+  onToggleGrid,
+  archivedCount = 0,
+  onOpenArchiveModal,
+  hiddenCount = 0,
+  onShowAllTracks
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#222328] bg-[#121316]/95 backdrop-blur px-5 py-2.5 flex flex-col gap-2">
@@ -111,6 +119,34 @@ export const Header: React.FC<HeaderProps> = ({
             <Grid3X3 className="w-3.5 h-3.5 text-[#9e9ea7]" />
             <span className="capitalize">{gridStyle === 'notebook' ? 'Notebook' : gridStyle}</span>
           </button>
+
+          {/* Hidden tracks quick unhide indicator */}
+          {hiddenCount > 0 && onShowAllTracks && (
+            <button
+              onClick={onShowAllTracks}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#383a45] bg-[#191a24] hover:bg-[#20222f] text-xs text-[#ececf0] transition-colors font-mono"
+              title={`${hiddenCount} track(s) hidden from canvas. Click to show all.`}
+            >
+              <EyeOff className="w-3.5 h-3.5 text-[#9e9ea7]" />
+              <span>{hiddenCount} Hidden</span>
+            </button>
+          )}
+
+          {/* Archive modal toggle button */}
+          {onOpenArchiveModal && (
+            <button
+              onClick={onOpenArchiveModal}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors font-mono ${
+                archivedCount > 0
+                  ? 'border-[#2e303d] bg-[#181920] hover:bg-[#20222b] text-[#ececf0]'
+                  : 'border-[#222328] bg-[#16171b] hover:bg-[#202127] text-[#9e9ea7] hover:text-[#ececf0]'
+              }`}
+              title="Open Archived Timelines"
+            >
+              <Archive className="w-3.5 h-3.5 text-[#9e9ea7]" />
+              <span>Archived{archivedCount > 0 ? ` (${archivedCount})` : ''}</span>
+            </button>
+          )}
 
           <div className="h-4 w-px bg-[#222328]" />
 

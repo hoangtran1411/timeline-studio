@@ -6,6 +6,7 @@ import { Header } from '@/components/Header';
 import { ChronoCanvas, ChronoCanvasRef } from '@/components/ChronoCanvas';
 import { NodeDrawer } from '@/components/NodeDrawer';
 import { AddTimelineModal } from '@/components/AddTimelineModal';
+import { ArchivedTracksModal } from '@/components/ArchivedTracksModal';
 import { ComparisonMatrix } from '@/components/ComparisonMatrix';
 import { parseDate, getMidpointDate, addDays, formatDateStr } from '@/utils/date-utils';
 
@@ -23,6 +24,7 @@ export default function TimelineStudioPage() {
   const [defaultNodeEndDate, setDefaultNodeEndDate] = useState<string | undefined>();
 
   const [isTimelineModalOpen, setIsTimelineModalOpen] = useState(false);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [preselectedParentId, setPreselectedParentId] = useState<string | null>(null);
   const [preselectedBranchNodeId, setPreselectedBranchNodeId] = useState<string | null>(null);
 
@@ -182,9 +184,117 @@ export default function TimelineStudioPage() {
     await fetchData();
   };
 
-  // Handler: Delete Timeline Track
+  // Handler: Toggle track visibility on canvas
+  const handleToggleTrackVisibility = async (timelineId: string, isVisible: boolean) => {
+    setData(prev => ({
+      ...prev,
+      timelines: prev.timelines.map(t =>
+        t.id === timelineId ? { ...t, isVisible } : t
+      )
+    }));
+
+    try {
+      await fetch(`/api/timeline/${timelineId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isVisible })
+      });
+    } catch (err) {
+      console.error('Failed to update timeline visibility:', err);
+      await fetchData();
+    }
+  };
+
+  // Handler: Show all hidden tracks
+  const handleShowAllTracks = async () => {
+    setData(prev => ({
+      ...prev,
+      timelines: prev.timelines.map(t => ({ ...t, isVisible: true }))
+    }));
+
+    try {
+      const hidden = data.timelines.filter(t => t.isVisible === false);
+      for (const t of hidden) {
+        await fetch(`/api/timeline/${t.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isVisible: true })
+        });
+      }
+    } catch (err) {
+      console.error('Failed to show all tracks:', err);
+      await fetchData();
+    }
+  };
+
+  // Handler: Archive Timeline Track (Offload from canvas, keep in SQLite database)
+  const handleArchiveTrack = async (timelineId: string) => {
+    const track = data.timelines.find(t => t.id === timelineId);
+    if (!track) return;
+
+    if (data.timelines.length <= 1) {
+      alert('Cannot archive the only active timeline track.');
+      return;
+    }
+
+    setData(prev => ({
+      ...prev,
+      timelines: prev.timelines.filter(t => t.id !== timelineId),
+      archivedTimelines: [...(prev.archivedTimelines || []), { ...track, isArchived: true }]
+    }));
+
+    try {
+      await fetch(`/api/timeline/${timelineId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived: true })
+      });
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to archive timeline:', err);
+      await fetchData();
+    }
+  };
+
+  // Handler: Restore Archived Timeline Track
+  const handleRestoreTrack = async (timelineId: string) => {
+    const track = (data.archivedTimelines || []).find(t => t.id === timelineId);
+    if (!track) return;
+
+    setData(prev => ({
+      ...prev,
+      timelines: [...prev.timelines, { ...track, isArchived: false, isVisible: true }],
+      archivedTimelines: (prev.archivedTimelines || []).filter(t => t.id !== timelineId)
+    }));
+
+    try {
+      await fetch(`/api/timeline/${timelineId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived: false, isVisible: true })
+      });
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to restore timeline:', err);
+      await fetchData();
+    }
+  };
+
+  // Handler: Permanent Delete Track from modal
+  const handlePermanentDeleteTrack = async (timelineId: string) => {
+    if (confirm('Are you sure you want to permanently delete this timeline track and all its nodes? This cannot be undone.')) {
+      await fetch(`/api/timeline/${timelineId}`, { method: 'DELETE' });
+      await fetchData();
+    }
+  };
+
+  // Handler: Delete Timeline Track from dock
   const handleDeleteTrack = async (timelineId: string) => {
-    if (confirm('Are you sure you want to delete this timeline track and all its nodes?')) {
+    if (data.timelines.length <= 1) {
+      alert('Cannot delete the only timeline track.');
+      return;
+    }
+    if (confirm('Are you sure you want to permanently delete this timeline track and all its nodes? (Tip: You can also use Archive to keep it in database)')) {
       await fetch(`/api/timeline/${timelineId}`, { method: 'DELETE' });
       await fetchData();
     }
@@ -336,6 +446,10 @@ export default function TimelineStudioPage() {
         onSearchChange={setSearchQuery}
         gridStyle={gridStyle}
         onToggleGrid={handleToggleGrid}
+        archivedCount={(data.archivedTimelines || []).length}
+        onOpenArchiveModal={() => setIsArchiveModalOpen(true)}
+        hiddenCount={data.timelines.filter(t => t.isVisible === false).length}
+        onShowAllTracks={handleShowAllTracks}
       />
 
       {/* Main Interactive Canvas & Bottom Panel Container */}
@@ -356,6 +470,8 @@ export default function TimelineStudioPage() {
           onAddNodeToTrack={handleOpenAddNode}
           onInsertNodeBetween={handleInsertBetween}
           onBranchTrack={handleOpenBranchModal}
+          onToggleVisibility={handleToggleTrackVisibility}
+          onArchiveTrack={handleArchiveTrack}
           onDeleteTrack={handleDeleteTrack}
           onDeleteNode={handleDeleteNode}
           onMoveNode={handleMoveNode}
@@ -440,6 +556,15 @@ export default function TimelineStudioPage() {
         preselectedParentId={preselectedParentId}
         preselectedBranchNodeId={preselectedBranchNodeId}
         onCreateTimeline={handleCreateTimeline}
+      />
+
+      {/* Archived Timelines Modal */}
+      <ArchivedTracksModal
+        isOpen={isArchiveModalOpen}
+        onClose={() => setIsArchiveModalOpen(false)}
+        archivedTimelines={data.archivedTimelines || []}
+        onRestoreTrack={handleRestoreTrack}
+        onPermanentDeleteTrack={handlePermanentDeleteTrack}
       />
     </div>
   );

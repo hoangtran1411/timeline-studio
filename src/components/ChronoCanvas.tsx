@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { TimelineTrack, TimelineNode, NodeDependency } from '@/types/timeline';
 import { LeftTrackDock } from './LeftTrackDock';
 import { ChronoRuler } from './ChronoRuler';
@@ -25,6 +25,8 @@ interface ChronoCanvasProps {
   onAddNodeToTrack: (timelineId: string, defaultStartDate?: string) => void;
   onInsertNodeBetween: (timelineId: string, leftNode: TimelineNode, rightNode: TimelineNode) => void;
   onBranchTrack: (parentTimelineId: string, branchPointNodeId?: string) => void;
+  onToggleVisibility?: (timelineId: string, isVisible: boolean) => void;
+  onArchiveTrack?: (timelineId: string) => void;
   onDeleteTrack: (timelineId: string) => void;
   onDeleteNode: (nodeId: string) => void;
   onMoveNode: (nodeId: string, newStartDate: string, newEndDate: string | null) => Promise<void>;
@@ -46,6 +48,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   onAddNodeToTrack,
   onInsertNodeBetween,
   onBranchTrack,
+  onToggleVisibility,
+  onArchiveTrack,
   onDeleteTrack,
   onDeleteNode,
   onMoveNode,
@@ -142,17 +146,22 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     return Math.max(210, 210 + maxLane * 130);
   };
 
+  // Filter visible tracks for canvas rendering
+  const visibleTimelines: TimelineTrack[] = useMemo(() => {
+    return timelines.filter((t: TimelineTrack) => t.isVisible !== false);
+  }, [timelines]);
+
   const getTrackTopOffset = (trackIndex: number): number => {
     let offset = 64; // height of top ruler
     for (let i = 0; i < trackIndex; i++) {
-      offset += getTrackHeight(timelines[i]);
+      offset += getTrackHeight(visibleTimelines[i]);
     }
     return offset;
   };
 
   const canvasWidth = Math.max(1400, Math.round(totalDays * pxPerDay));
   let totalTrackHeights = 0;
-  timelines.forEach(t => totalTrackHeights += getTrackHeight(t));
+  visibleTimelines.forEach(t => totalTrackHeights += getTrackHeight(t));
   const totalCanvasHeight = 64 + totalTrackHeights + 28;
 
   // Handle clicking empty area in a track to create a node at that exact date
@@ -171,6 +180,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         width={sidebarWidth}
         onAddNodeToTrack={(id) => onAddNodeToTrack(id)}
         onBranchTrack={(id) => onBranchTrack(id)}
+        onToggleVisibility={onToggleVisibility}
+        onArchiveTrack={onArchiveTrack}
         onDeleteTrack={onDeleteTrack}
         getTrackHeight={getTrackHeight}
         scrollRef={leftDockScrollRef}
@@ -228,7 +239,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
 
           {/* SVG Branches and Dependencies Layer */}
           <BranchConnectionLayer
-            timelines={timelines}
+            timelines={visibleTimelines}
             dependencies={dependencies}
             originDate={originDate}
             pxPerDay={pxPerDay}
@@ -242,7 +253,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
 
           {/* Tracks Stack */}
           <div className="flex flex-col pb-6">
-            {timelines.map((track) => {
+            {visibleTimelines.map((track) => {
               const trackHeight = getTrackHeight(track);
               const isSelectedTrack = selectedTrackId === track.id;
               const isHoveredTrack = hoveredTrackId === track.id;

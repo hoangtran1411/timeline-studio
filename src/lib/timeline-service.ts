@@ -6,7 +6,9 @@ export function getFullTimelineData(): FullTimelineData {
   const db = getDb();
 
   const timelineRows = db.prepare(`
-    SELECT id, title, description, color, parent_timeline_id, branch_point_node_id, order_index
+    SELECT id, title, description, color, parent_timeline_id, branch_point_node_id, order_index,
+           COALESCE(is_archived, 0) as is_archived,
+           COALESCE(is_visible, 1) as is_visible
     FROM timelines
     ORDER BY order_index ASC, created_at ASC
   `).all() as Array<{
@@ -17,6 +19,8 @@ export function getFullTimelineData(): FullTimelineData {
     parent_timeline_id: string | null;
     branch_point_node_id: string | null;
     order_index: number;
+    is_archived: number;
+    is_visible: number;
   }>;
 
   const nodeRows = db.prepare(`
@@ -73,7 +77,7 @@ export function getFullTimelineData(): FullTimelineData {
     assignCollisionLanes(nodes);
   }
 
-  const timelines: TimelineTrack[] = timelineRows.map(row => ({
+  const allTracks: TimelineTrack[] = timelineRows.map(row => ({
     id: row.id,
     title: row.title,
     description: row.description,
@@ -81,8 +85,13 @@ export function getFullTimelineData(): FullTimelineData {
     parentTimelineId: row.parent_timeline_id,
     branchPointNodeId: row.branch_point_node_id,
     orderIndex: row.order_index,
+    isArchived: Boolean(row.is_archived),
+    isVisible: row.is_visible !== 0,
     nodes: nodesByTimeline.get(row.id) || []
   }));
+
+  const activeTimelines = allTracks.filter(t => !t.isArchived);
+  const archivedTimelines = allTracks.filter(t => t.isArchived);
 
   const dependencies: NodeDependency[] = depRows.map(row => ({
     id: row.id,
@@ -91,7 +100,7 @@ export function getFullTimelineData(): FullTimelineData {
     type: row.type as 'blocks' | 'relates_to' | 'branch_from'
   }));
 
-  return { timelines, dependencies };
+  return { timelines: activeTimelines, archivedTimelines, dependencies };
 }
 
 /**
@@ -162,13 +171,24 @@ export function createTimeline(params: {
   };
 }
 
-export function updateTimeline(id: string, params: { title?: string; description?: string }) {
+export function updateTimeline(id: string, params: {
+  title?: string;
+  description?: string;
+  isArchived?: boolean;
+  isVisible?: boolean;
+}) {
   const db = getDb();
   if (params.title !== undefined) {
     db.prepare('UPDATE timelines SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.title, id);
   }
   if (params.description !== undefined) {
     db.prepare('UPDATE timelines SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.description, id);
+  }
+  if (params.isArchived !== undefined) {
+    db.prepare('UPDATE timelines SET is_archived = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.isArchived ? 1 : 0, id);
+  }
+  if (params.isVisible !== undefined) {
+    db.prepare('UPDATE timelines SET is_visible = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.isVisible ? 1 : 0, id);
   }
 }
 

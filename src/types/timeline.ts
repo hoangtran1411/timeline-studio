@@ -23,6 +23,8 @@ export interface TimelineTrack {
   parentTimelineId?: string | null;
   branchPointNodeId?: string | null;
   orderIndex: number;
+  isArchived?: boolean;
+  isVisible?: boolean;
   nodes: TimelineNode[];
 }
 
@@ -35,5 +37,6 @@ export interface NodeDependency {
 
 export interface FullTimelineData {
   timelines: TimelineTrack[];
+  archivedTimelines?: TimelineTrack[];
   dependencies: NodeDependency[];
 }
