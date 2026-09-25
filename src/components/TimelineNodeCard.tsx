@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { TimelineNode } from '@/types/timeline';
 import { formatDisplayDate, addDays } from '@/utils/date-utils';
-import { Check, AlertCircle, Edit3, Plus, GitFork, Trash2, GripVertical } from 'lucide-react';
+import { Check, AlertCircle, Edit3, Plus, GitFork, Trash2, GripVertical, Lock, Unlock } from 'lucide-react';
 
 interface TimelineNodeCardProps {
   node: TimelineNode;
@@ -38,6 +38,23 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
   const [dragDeltaX, setDragDeltaX] = useState(0);
   const [resizeDeltaW, setResizeDeltaW] = useState(0);
 
+  // Lock state: Completed nodes are locked by default; user can unlock via lock icon
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showLockNotice, setShowLockNotice] = useState(false);
+  const lockNoticeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const isLocked = node.status === 'completed' && !isUnlocked;
+
+  const triggerLockNotice = () => {
+    setShowLockNotice(true);
+    if (lockNoticeTimeoutRef.current) {
+      clearTimeout(lockNoticeTimeoutRef.current);
+    }
+    lockNoticeTimeoutRef.current = setTimeout(() => {
+      setShowLockNotice(false);
+    }, 2000);
+  };
+
   const pointerState = useRef<{
     startX: number;
     mode: 'move' | 'resize';
@@ -50,7 +67,11 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
       case 'completed':
         return (
           <div className="w-3.5 h-3.5 rounded-full bg-[#ececf0] text-[#101114] flex items-center justify-center flex-shrink-0">
-            <Check className="w-2.5 h-2.5 stroke-[3]" />
+            {isLocked ? (
+              <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
+            ) : (
+              <Check className="w-2.5 h-2.5 stroke-[3]" />
+            )}
           </div>
         );
       case 'in_progress':
@@ -79,19 +100,25 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
   const handlePointerDownMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button')) return;
     e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
 
     pointerState.current = {
       startX: e.clientX,
       mode: 'move',
       isActualAction: false
     };
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (_) {}
   };
 
   // Drag-to-resize pointer handler on right edge
   const handlePointerDownResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isLocked) return;
     e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (_) {}
 
     pointerState.current = {
       startX: e.clientX,
@@ -106,6 +133,13 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
     const delta = e.clientX - pointerState.current.startX;
 
     if (pointerState.current.mode === 'move') {
+      if (isLocked) {
+        if (Math.abs(delta) > 4) {
+          triggerLockNotice();
+        }
+        return;
+      }
+
       if (!pointerState.current.isActualAction && Math.abs(delta) > 3) {
         pointerState.current.isActualAction = true;
         setIsDragging(true);
@@ -114,6 +148,7 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
         setDragDeltaX(delta);
       }
     } else if (pointerState.current.mode === 'resize') {
+      if (isLocked) return;
       setResizeDeltaW(delta);
     }
   };
@@ -128,18 +163,22 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
     } catch (_) {}
 
     if (state.mode === 'move') {
-      if (state.isActualAction) {
+      const moveDistance = Math.abs(e.clientX - state.startX);
+      if (state.isActualAction && !isLocked) {
         const daysShift = Math.round(dragDeltaX / pxPerDay);
         if (daysShift !== 0) {
           const newStart = addDays(node.startDate, daysShift);
           const newEnd = node.endDate ? addDays(node.endDate, daysShift) : null;
           await onMoveNode(node.id, newStart, newEnd);
         }
-      } else {
+      } else if (!isLocked && !state.isActualAction) {
         // Just clicked
         onSelect(node);
+      } else if (isLocked && moveDistance <= 5) {
+        // Click on locked card opens edit drawer
+        onSelect(node);
       }
-    } else if (state.mode === 'resize') {
+    } else if (state.mode === 'resize' && !isLocked) {
       const addedDays = Math.round(resizeDeltaW / pxPerDay);
       if (addedDays !== 0) {
         const currentEnd = node.endDate || addDays(node.startDate, 7);
@@ -177,8 +216,8 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
         isDragging
           ? 'bg-[#22232a] border-[#ffffff] shadow-2xl cursor-grabbing scale-[1.02]'
           : isSelected
-          ? 'bg-[#22232a] border-[#ffffff] ring-1 ring-[#ffffff]/20 shadow-md cursor-grab'
-          : 'bg-[#18191e] border-[#2a2b32] hover:bg-[#1f2027] hover:border-[#454754] cursor-grab'
+          ? `bg-[#22232a] border-[#ffffff] ring-1 ring-[#ffffff]/20 shadow-md ${isLocked ? 'cursor-default' : 'cursor-grab'}`
+          : `bg-[#18191e] border-[#2a2b32] hover:bg-[#1f2027] hover:border-[#454754] ${isLocked ? 'cursor-default' : 'cursor-grab'}`
       }`}
       onPointerDown={handlePointerDownMove}
       onPointerMove={handlePointerMove}
@@ -196,18 +235,40 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
       >
         {/* Knot Peg clamped on the timeline wire */}
         <div
-          className={`w-5 h-5 -mt-2.5 rounded-full flex items-center justify-center transition-transform shadow-md z-30 ${
+          onClick={(e) => {
+            if (node.status === 'completed') {
+              e.stopPropagation();
+              setIsUnlocked(!isUnlocked);
+            }
+          }}
+          className={`w-5 h-5 -mt-2.5 rounded-full flex items-center justify-center transition-transform shadow-md z-30 pointer-events-auto ${
+            node.status === 'completed' ? 'cursor-pointer' : ''
+          } ${
             node.status === 'completed'
-              ? 'bg-[#ececf0] text-[#101114] ring-2 ring-[#101114]'
+              ? isLocked
+                ? 'bg-[#ececf0] text-[#101114] ring-2 ring-[#101114]'
+                : 'bg-[#181920] text-[#ececf0] border-2 border-white ring-1 ring-[#101114]'
               : node.status === 'in_progress'
               ? 'bg-[#181920] border-2 border-white ring-1 ring-[#101114]'
               : node.status === 'blocked'
               ? 'bg-[#1c1d22] border-2 border-dashed border-[#9e9ea7]'
               : 'bg-[#141519] border-2 border-[#52525b]'
           } ${isHovered ? 'scale-110' : ''}`}
-          title={`Milestone Status: ${node.status}`}
+          title={
+            node.status === 'completed'
+              ? isLocked
+                ? 'Completed milestone is locked on branch wire — click to unlock and move'
+                : 'Completed milestone is unlocked — click to lock'
+              : `Milestone Status: ${node.status}`
+          }
         >
-          {node.status === 'completed' && <Check className="w-3 h-3 stroke-[3]" />}
+          {node.status === 'completed' && (
+            isLocked ? (
+              <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
+            ) : (
+              <Check className="w-3 h-3 stroke-[3]" />
+            )
+          )}
           {node.status === 'in_progress' && (
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
@@ -248,11 +309,45 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
         </div>
       )}
 
+      {/* Live lock warning banner when drag is attempted */}
+      {showLockNotice && (
+        <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded bg-[#1c1d24] border border-[#ececf0]/40 text-[#ececf0] font-mono text-[10px] font-semibold shadow-2xl pointer-events-none whitespace-nowrap z-50 flex items-center gap-1.5 animate-pulse">
+          <Lock className="w-3 h-3 text-[#ececf0]" />
+          <span>Milestone locked — click padlock to unlock</span>
+        </div>
+      )}
+
       <div className="p-2.5">
         {/* Top Header */}
         <div className="flex items-center justify-between gap-1.5 mb-1.5">
           <div className="flex items-center gap-1.5 min-w-0">
-            <GripVertical className="w-3 h-3 text-[#6b6c75] opacity-50 group-hover:opacity-100 flex-shrink-0" />
+            {node.status === 'completed' ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsUnlocked(!isUnlocked);
+                }}
+                className={`p-1 -ml-1 rounded transition-colors flex items-center justify-center flex-shrink-0 ${
+                  isLocked
+                    ? 'text-[#ececf0] hover:bg-[#2a2b34] hover:text-white'
+                    : 'text-[#9e9ea7] hover:bg-[#2a2b34] hover:text-[#ececf0]'
+                }`}
+                title={
+                  isLocked
+                    ? 'Completed milestone is locked — click to unlock and move'
+                    : 'Milestone unlocked — click to lock'
+                }
+              >
+                {isLocked ? (
+                  <Lock className="w-3.5 h-3.5 stroke-[2.2]" />
+                ) : (
+                  <Unlock className="w-3.5 h-3.5 stroke-[2.2] text-[#ececf0]" />
+                )}
+              </button>
+            ) : (
+              <GripVertical className="w-3 h-3 text-[#6b6c75] opacity-50 group-hover:opacity-100 flex-shrink-0" />
+            )}
             <span className="font-mono text-[11px] text-[#9e9ea7] tracking-tight truncate font-medium">
               {formatDisplayDate(previewStartDate)}
               {previewEndDate && ` – ${formatDisplayDate(previewEndDate)}`}
@@ -266,6 +361,20 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
             }`}
             onClick={(e) => e.stopPropagation()}
           >
+            {node.status === 'completed' && (
+              <button
+                type="button"
+                onClick={() => setIsUnlocked(!isUnlocked)}
+                className={`p-1 rounded transition-colors ${
+                  isLocked
+                    ? 'text-[#ececf0] hover:bg-[#2a2b34]'
+                    : 'text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#2a2b34]'
+                }`}
+                title={isLocked ? 'Unlock milestone to move' : 'Lock milestone'}
+              >
+                {isLocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+              </button>
+            )}
             <button
               onClick={() => onSelect(node)}
               className="p-1 rounded text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#2a2b34] transition-colors"
@@ -334,19 +443,26 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
             {node.priority === 'medium' && (
               <span className="w-1.5 h-1.5 rounded-full bg-[#71717a]" title="Medium Priority" />
             )}
+            {isLocked && (
+              <span title="Locked milestone">
+                <Lock className="w-2.5 h-2.5 text-[#ececf0]" />
+              </span>
+            )}
             <span className="capitalize">{node.status.replace('_', ' ')}</span>
           </div>
         </div>
       </div>
 
       {/* Right Edge Drag-to-Resize Handle */}
-      <div
-        className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-[#ececf0]/30 rounded-r-lg transition-colors"
-        title="Drag right edge to adjust duration"
-        onPointerDown={handlePointerDownResize}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-      />
+      {!isLocked && (
+        <div
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-[#ececf0]/30 rounded-r-lg transition-colors"
+          title="Drag right edge to adjust duration"
+          onPointerDown={handlePointerDownResize}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        />
+      )}
     </div>
   );
 };

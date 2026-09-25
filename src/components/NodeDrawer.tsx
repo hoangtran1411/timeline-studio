@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TimelineNode, TimelineTrack, NodeStatus, NodePriority } from '@/types/timeline';
 import { X, Trash2, GitFork, Calendar, Check, AlertCircle, Clock, Tag } from 'lucide-react';
 
@@ -51,6 +51,63 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
   const [autoShiftDays, setAutoShiftDays] = useState(0);
   const [enableAutoShift, setEnableAutoShift] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Drawer width resize state (persisted to localStorage to prevent database bloat)
+  const [drawerWidth, setDrawerWidth] = useState(480);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(480);
+
+  useEffect(() => {
+    try {
+      const savedWidth = localStorage.getItem('timeline_studio_node_drawer_width');
+      if (savedWidth) {
+        const parsed = parseInt(savedWidth, 10);
+        if (!isNaN(parsed) && parsed >= 360 && parsed <= 1200) {
+          setDrawerWidth(parsed);
+          resizeStartWidth.current = parsed;
+        }
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (_) {}
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = drawerWidth;
+    setIsResizing(true);
+  };
+
+  const handleResizePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isResizing) return;
+    const delta = resizeStartX.current - e.clientX;
+    const maxWidth = typeof window !== 'undefined' ? Math.min(window.innerWidth - 60, 1100) : 960;
+    const nextWidth = Math.max(360, Math.min(maxWidth, resizeStartWidth.current + delta));
+    setDrawerWidth(nextWidth);
+  };
+
+  const handleResizePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isResizing) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    setIsResizing(false);
+    try {
+      localStorage.setItem('timeline_studio_node_drawer_width', String(drawerWidth));
+    } catch (_) {}
+  };
+
+  const handleResizeDoubleClick = () => {
+    const defaultWidth = 480;
+    setDrawerWidth(defaultWidth);
+    try {
+      localStorage.setItem('timeline_studio_node_drawer_width', String(defaultWidth));
+    } catch (_) {}
+  };
 
   useEffect(() => {
     if (node) {
@@ -117,13 +174,49 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
         onClick={onClose}
       />
 
-      {/* Drawer Body */}
-      <div className="relative w-full max-w-md bg-[#141519] border-l border-[#222328] h-full shadow-2xl flex flex-col z-10 select-none">
+      {/* Drawer Body with Resizable Left Edge */}
+      <div
+        style={{ width: `${drawerWidth}px`, maxWidth: '96vw' }}
+        className={`relative bg-[#141519] border-l border-[#222328] h-full shadow-2xl flex flex-col z-10 select-none ${
+          isResizing ? 'transition-none select-none' : 'transition-[width] duration-75'
+        }`}
+      >
+        {/* Resizable Splitter Handle on Left Border */}
+        <div
+          className={`absolute -left-2 top-0 bottom-0 w-4 cursor-col-resize z-30 flex items-center justify-center transition-colors group ${
+            isResizing ? 'bg-[#ececf0]/20' : 'hover:bg-[#ececf0]/15'
+          }`}
+          title="Drag left/right to resize panel width (Double-click to reset to 480px)"
+          onPointerDown={handleResizePointerDown}
+          onPointerMove={handleResizePointerMove}
+          onPointerUp={handleResizePointerUp}
+          onDoubleClick={handleResizeDoubleClick}
+        >
+          {/* Visual Grip Pill */}
+          <div
+            className={`w-1 rounded-full transition-all ${
+              isResizing
+                ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)] h-14'
+                : 'bg-[#52525b] group-hover:bg-[#ececf0] h-8 group-hover:h-10'
+            }`}
+          />
+        </div>
+
+        {/* Live width indicator tooltip when resizing */}
+        {isResizing && (
+          <div className="absolute top-4 -left-16 px-2 py-0.5 rounded bg-[#ececf0] text-black font-mono text-[10px] font-bold shadow-lg pointer-events-none whitespace-nowrap z-50">
+            {drawerWidth}px
+          </div>
+        )}
+
         {/* Header */}
         <div className="px-5 py-4 border-b border-[#222328] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-[#9e9ea7]">
               {node ? 'EDIT NODE' : 'CREATE NODE'}
+            </span>
+            <span className="font-mono text-[10px] text-[#52525b]">
+              ({drawerWidth}px)
             </span>
           </div>
           <div className="flex items-center gap-1">
