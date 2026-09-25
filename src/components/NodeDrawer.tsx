@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { TimelineNode, TimelineTrack, NodeStatus, NodePriority } from '@/types/timeline';
-import { X, Trash2, GitFork, Calendar, Check, AlertCircle, Clock, Tag } from 'lucide-react';
+import { X, Trash2, GitFork } from 'lucide-react';
 
 interface NodeDrawerProps {
   isOpen: boolean;

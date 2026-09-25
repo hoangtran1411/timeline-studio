@@ -7,7 +7,7 @@ import { ChronoRuler } from './ChronoRuler';
 import { TimelineNodeCard } from './TimelineNodeCard';
 import { BetweenNodeInserter } from './BetweenNodeInserter';
 import { BranchConnectionLayer } from './BranchConnectionLayer';
-import { dateToPixelX, pixelXToDate, getMidpointDate, compareDateStrings } from '@/utils/date-utils';
+import { dateToPixelX, pixelXToDate, compareDateStrings } from '@/utils/date-utils';
 
 export interface ChronoCanvasRef {
   scrollToToday: () => void;

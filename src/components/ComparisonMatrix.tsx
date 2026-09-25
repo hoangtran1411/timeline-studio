@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { TimelineTrack, TimelineNode, NodeStatus, NodePriority } from '@/types/timeline';
+import { TimelineTrack, TimelineNode, NodeStatus } from '@/types/timeline';
 import { formatDisplayDate, parseDate } from '@/utils/date-utils';
-import { Table, ChevronDown, ChevronUp, Search, Check, AlertCircle, Clock, Edit3, Tag, Layers } from 'lucide-react';
+import { Table, ChevronDown, ChevronUp, Search, Check, AlertCircle, Clock, Edit3 } from 'lucide-react';
 
 interface ComparisonMatrixProps {
   timelines: TimelineTrack[];
@@ -34,7 +34,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
 }) => {
   const [selectedTrackTab, setSelectedTrackTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, _setStatusFilter] = useState<string>('all');
 
   // Flatten all real database nodes across all timeline tracks
   const allNodesWithTrack = useMemo(() => {

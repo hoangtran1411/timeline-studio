@@ -265,7 +265,7 @@ function addDaysToDateStr(dateStr: string, days: number): string {
 export function updateNode(id: string, params: Partial<TimelineNode>): void {
   const db = getDb();
   const fields: string[] = [];
-  const values: any[] = [];
+  const values: (string | number | bigint | null)[] = [];
 
   if (params.title !== undefined) {
     fields.push('title = ?');

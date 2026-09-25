@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { TimelineNode } from '@/types/timeline';
 import { formatDisplayDate, addDays } from '@/utils/date-utils';
-import { Check, AlertCircle, Edit3, Plus, GitFork, Trash2, GripVertical, Lock, Unlock } from 'lucide-react';
+import { Check, Edit3, Plus, GitFork, Trash2, GripVertical, Lock, Unlock } from 'lucide-react';
 
 interface TimelineNodeCardProps {
   node: TimelineNode;
@@ -77,40 +77,6 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
     isActualAction: boolean;
   } | null>(null);
 
-  // Status visual indicators
-  const renderStatusIcon = () => {
-    switch (node.status) {
-      case 'completed':
-        return (
-          <div className="w-3.5 h-3.5 rounded-full bg-[#ececf0] text-[#101114] flex items-center justify-center flex-shrink-0">
-            {isLocked ? (
-              <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
-            ) : (
-              <Check className="w-2.5 h-2.5 stroke-[3]" />
-            )}
-          </div>
-        );
-      case 'in_progress':
-        return (
-          <div className="w-3.5 h-3.5 rounded-full border border-[#ececf0] flex items-center justify-center flex-shrink-0 relative">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#ececf0] animate-pulse" />
-          </div>
-        );
-      case 'blocked':
-        return (
-          <div className="w-3.5 h-3.5 rounded-full border border-dashed border-[#9e9ea7] flex items-center justify-center flex-shrink-0">
-            <AlertCircle className="w-2.5 h-2.5 text-[#9e9ea7]" />
-          </div>
-        );
-      case 'planned':
-      default:
-        return (
-          <div className="w-3.5 h-3.5 rounded-full border border-[#383a42] flex items-center justify-center flex-shrink-0">
-            <div className="w-1 h-1 rounded-full bg-[#383a42]" />
-          </div>
-        );
-    }
-  };
 
   // Drag-to-move pointer handlers
   const handlePointerDownMove = (e: React.PointerEvent<HTMLDivElement>) => {

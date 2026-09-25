@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TimelineTrack, TimelineNode } from '@/types/timeline';
-import { X, GitFork, Plus, Layers } from 'lucide-react';
+import { TimelineTrack } from '@/types/timeline';
+import { X, GitFork, Layers } from 'lucide-react';
 
 interface AddTimelineModalProps {
   isOpen: boolean;

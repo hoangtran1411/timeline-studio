@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { TimelineTrack, TimelineNode, NodeDependency, FullTimelineData } from '@/types/timeline';
+import { TimelineNode, FullTimelineData } from '@/types/timeline';
 import { Header } from '@/components/Header';
 import { ChronoCanvas, ChronoCanvasRef } from '@/components/ChronoCanvas';
 import { NodeDrawer } from '@/components/NodeDrawer';
 import { AddTimelineModal } from '@/components/AddTimelineModal';
 import { ComparisonMatrix } from '@/components/ComparisonMatrix';
-import { parseDate, getMidpointDate, diffInDays, addDays, formatDateStr } from '@/utils/date-utils';
+import { parseDate, getMidpointDate, addDays, formatDateStr } from '@/utils/date-utils';
 
 export default function TimelineStudioPage() {
   const [data, setData] = useState<FullTimelineData>({ timelines: [], dependencies: [] });
@@ -111,7 +111,7 @@ export default function TimelineStudioPage() {
   }, [data.timelines, searchQuery]);
 
   // Handler: Save Node (Create or Edit)
-  const handleSaveNode = async (nodeData: any) => {
+  const handleSaveNode = async (nodeData: Partial<TimelineNode> & { id?: string }) => {
     if (nodeData.id) {
       // Edit existing
       await fetch(`/api/nodes/${nodeData.id}`, {
@@ -168,7 +168,12 @@ export default function TimelineStudioPage() {
   };
 
   // Handler: Create Timeline Track
-  const handleCreateTimeline = async (timelineData: any) => {
+  const handleCreateTimeline = async (timelineData: {
+    title: string;
+    description?: string;
+    parentTimelineId?: string | null;
+    branchPointNodeId?: string | null;
+  }) => {
     await fetch('/api/timeline', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

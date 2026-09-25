@@ -19,8 +19,9 @@ export async function POST(request: Request) {
       autoShiftSubsequentDays: body.autoShiftSubsequentDays
     });
     return NextResponse.json(node);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to create node:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
