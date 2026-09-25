@@ -1,69 +1,381 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { TimelineTrack, TimelineNode, NodeDependency, FullTimelineData } from '@/types/timeline';
+import { Header } from '@/components/Header';
+import { ChronoCanvas, ChronoCanvasRef } from '@/components/ChronoCanvas';
+import { NodeDrawer } from '@/components/NodeDrawer';
+import { AddTimelineModal } from '@/components/AddTimelineModal';
+import { ComparisonMatrix } from '@/components/ComparisonMatrix';
+import { parseDate, getMidpointDate, diffInDays, addDays } from '@/utils/date-utils';
+
+export default function TimelineStudioPage() {
+  const [data, setData] = useState<FullTimelineData>({ timelines: [], dependencies: [] });
+  const [loading, setLoading] = useState(true);
+  const [zoom, setZoom] = useState(1.0);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Modals & Drawers state
+  const [selectedNode, setSelectedNode] = useState<TimelineNode | null>(null);
+  const [isNodeDrawerOpen, setIsNodeDrawerOpen] = useState(false);
+  const [defaultNodeTimelineId, setDefaultNodeTimelineId] = useState<string | undefined>();
+  const [defaultNodeStartDate, setDefaultNodeStartDate] = useState<string | undefined>();
+  const [defaultNodeEndDate, setDefaultNodeEndDate] = useState<string | undefined>();
+
+  const [isTimelineModalOpen, setIsTimelineModalOpen] = useState(false);
+  const [preselectedParentId, setPreselectedParentId] = useState<string | null>(null);
+  const [preselectedBranchNodeId, setPreselectedBranchNodeId] = useState<string | null>(null);
+
+  const canvasRef = useRef<ChronoCanvasRef>(null);
+
+  // Fetch data from SQLite API
+  const fetchData = async () => {
+    try {
+      const res = await fetch('/api/timeline');
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      }
+    } catch (err) {
+      console.error('Failed to load timelines:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Compute overall timeline date span
+  const { originDate, totalDays } = useMemo(() => {
+    let minDate = '2024-07-01';
+    let maxDate = '2024-12-31';
+
+    data.timelines.forEach(track => {
+      track.nodes.forEach(node => {
+        if (node.startDate < minDate) minDate = node.startDate;
+        const end = node.endDate || node.startDate;
+        if (end > maxDate) maxDate = end;
+      });
+    });
+
+    const origin = parseDate(minDate);
+    // Add extra padding days for smooth scrolling
+    const days = Math.max(180, diffInDays(minDate, maxDate) + 45);
+    return { originDate: origin, totalDays: days };
+  }, [data.timelines]);
+
+  // Base 6px per day at 100% zoom (1 week = ~42px)
+  const pxPerDay = 6.2 * zoom;
+  const todayDateStr = '2024-10-15';
+
+  // Total nodes calculation
+  const totalNodesCount = useMemo(() => {
+    return data.timelines.reduce((acc, t) => acc + t.nodes.length, 0);
+  }, [data.timelines]);
+
+  // Filtered timelines based on search query
+  const filteredTimelines = useMemo(() => {
+    if (!searchQuery.trim()) return data.timelines;
+    const q = searchQuery.toLowerCase();
+    return data.timelines.map(track => ({
+      ...track,
+      nodes: track.nodes.filter(n =>
+        n.title.toLowerCase().includes(q) ||
+        (n.description && n.description.toLowerCase().includes(q)) ||
+        n.tags.some(tag => tag.toLowerCase().includes(q))
+      )
+    }));
+  }, [data.timelines, searchQuery]);
+
+  // Handler: Save Node (Create or Edit)
+  const handleSaveNode = async (nodeData: any) => {
+    if (nodeData.id) {
+      // Edit existing
+      await fetch(`/api/nodes/${nodeData.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nodeData)
+      });
+    } else {
+      // Create new
+      await fetch('/api/nodes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nodeData)
+      });
+    }
+    await fetchData();
+  };
+
+  // Handler: Delete Node
+  const handleDeleteNode = async (nodeId: string) => {
+    await fetch(`/api/nodes/${nodeId}`, { method: 'DELETE' });
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode(null);
+    }
+    await fetchData();
+  };
+
+  // Handler: Move or Resize Node (Drag and Drop)
+  const handleMoveNode = async (nodeId: string, newStartDate: string, newEndDate: string | null) => {
+    // Optimistic local state update for instant feedback
+    setData(prev => ({
+      ...prev,
+      timelines: prev.timelines.map(track => ({
+        ...track,
+        nodes: track.nodes.map(node =>
+          node.id === nodeId
+            ? { ...node, startDate: newStartDate, endDate: newEndDate }
+            : node
+        )
+      }))
+    }));
+
+    try {
+      await fetch(`/api/nodes/${nodeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startDate: newStartDate, endDate: newEndDate })
+      });
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to update node position:', err);
+      await fetchData();
+    }
+  };
+
+  // Handler: Create Timeline Track
+  const handleCreateTimeline = async (timelineData: any) => {
+    await fetch('/api/timeline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(timelineData)
+    });
+    await fetchData();
+  };
+
+  // Handler: Delete Timeline Track
+  const handleDeleteTrack = async (timelineId: string) => {
+    if (confirm('Are you sure you want to delete this timeline track and all its nodes?')) {
+      await fetch(`/api/timeline/${timelineId}`, { method: 'DELETE' });
+      await fetchData();
+    }
+  };
+
+  // Handler: Quick Add Node to Track
+  const handleOpenAddNode = (timelineId?: string, defaultStartDate?: string) => {
+    setSelectedNode(null);
+    setDefaultNodeTimelineId(timelineId || data.timelines[0]?.id);
+    setDefaultNodeStartDate(defaultStartDate || todayDateStr);
+    setDefaultNodeEndDate(undefined);
+    setIsNodeDrawerOpen(true);
+  };
+
+  // Handler: Insert Node Between Two Nodes (Sắp xếp node nếu bị chèn vào giữa)
+  const handleInsertBetween = (
+    timelineId: string,
+    leftNode: TimelineNode,
+    rightNode: TimelineNode
+  ) => {
+    const leftEnd = leftNode.endDate || leftNode.startDate;
+    const rightStart = rightNode.startDate;
+
+    // Calculate midpoint date
+    const midDate = getMidpointDate(leftEnd, rightStart);
+
+    setSelectedNode(null);
+    setDefaultNodeTimelineId(timelineId);
+    setDefaultNodeStartDate(midDate);
+    // Suggest 7-day span
+    setDefaultNodeEndDate(addDays(midDate, 7));
+    setIsNodeDrawerOpen(true);
+  };
+
+  // Handler: Branch Timeline
+  const handleOpenBranchModal = (parentTimelineId?: string, branchPointNodeId?: string) => {
+    setPreselectedParentId(parentTimelineId || null);
+    setPreselectedBranchNodeId(branchPointNodeId || null);
+    setIsTimelineModalOpen(true);
+  };
+
+  // Resizable bottom panel state
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(250);
+  const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
+  const [isResizingBottom, setIsResizingBottom] = useState(false);
+  const resizeStartY = useRef<number>(0);
+  const resizeStartBottomHeight = useRef<number>(250);
+
+  useEffect(() => {
+    try {
+      const savedHeight = localStorage.getItem('timeline_studio_bottom_height');
+      if (savedHeight) {
+        const parsed = parseInt(savedHeight, 10);
+        if (!isNaN(parsed) && parsed >= 120 && parsed <= 600) {
+          setBottomPanelHeight(parsed);
+        }
+      }
+      const savedCollapsed = localStorage.getItem('timeline_studio_bottom_collapsed');
+      if (savedCollapsed === 'true') {
+        setIsBottomCollapsed(true);
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleBottomResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    resizeStartY.current = e.clientY;
+    resizeStartBottomHeight.current = bottomPanelHeight;
+    setIsResizingBottom(true);
+    if (isBottomCollapsed) {
+      setIsBottomCollapsed(false);
+    }
+  };
+
+  const handleBottomResizePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isResizingBottom) return;
+    const deltaY = e.clientY - resizeStartY.current;
+    const nextHeight = Math.max(120, Math.min(600, resizeStartBottomHeight.current - deltaY));
+    setBottomPanelHeight(nextHeight);
+  };
+
+  const handleBottomResizePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isResizingBottom) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    setIsResizingBottom(false);
+    try {
+      localStorage.setItem('timeline_studio_bottom_height', String(bottomPanelHeight));
+    } catch (_) {}
+  };
+
+  const handleBottomResizeDoubleClick = () => {
+    setIsBottomCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('timeline_studio_bottom_collapsed', String(next));
+      } catch (_) {}
+      return next;
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#101114] flex items-center justify-center font-mono text-xs text-[#9e9ea7]">
+        Loading ChronoSync Studio...
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="h-screen bg-[#101114] flex flex-col overflow-hidden">
+      {/* Top Header */}
+      <Header
+        timelineCount={data.timelines.length}
+        nodeCount={totalNodesCount}
+        zoom={zoom}
+        onZoomChange={setZoom}
+        onCenterToday={() => canvasRef.current?.scrollToToday()}
+        onOpenAddTimeline={() => {
+          setPreselectedParentId(null);
+          setPreselectedBranchNodeId(null);
+          setIsTimelineModalOpen(true);
+        }}
+        onOpenAddNode={() => handleOpenAddNode()}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
+
+      {/* Main Interactive Canvas & Bottom Panel Container */}
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+        <ChronoCanvas
+          ref={canvasRef}
+          timelines={filteredTimelines}
+          dependencies={data.dependencies}
+          originDate={originDate}
+          totalDays={totalDays}
+          pxPerDay={pxPerDay}
+          todayDateStr={todayDateStr}
+          selectedNode={selectedNode}
+          onSelectNode={(node) => {
+            setSelectedNode(node);
+            setIsNodeDrawerOpen(true);
+          }}
+          onAddNodeToTrack={handleOpenAddNode}
+          onInsertNodeBetween={handleInsertBetween}
+          onBranchTrack={handleOpenBranchModal}
+          onDeleteTrack={handleDeleteTrack}
+          onDeleteNode={handleDeleteNode}
+          onMoveNode={handleMoveNode}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        {/* Horizontal Resizable Splitter Handle */}
+        <div
+          className={`relative z-40 h-1.5 w-full flex-shrink-0 cursor-row-resize group flex items-center justify-center transition-colors ${
+            isResizingBottom ? 'bg-[#ececf0]' : 'bg-[#222328] hover:bg-[#3e404b]'
+          }`}
+          title="Drag up/down to resize bottom panel (Double-click to collapse/expand)"
+          onPointerDown={handleBottomResizePointerDown}
+          onPointerMove={handleBottomResizePointerMove}
+          onPointerUp={handleBottomResizePointerUp}
+          onDoubleClick={handleBottomResizeDoubleClick}
+        >
+          {/* Center Horizontal Grip Pill */}
+          <div className="absolute h-3 w-8 rounded flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1c1d22] border border-[#2a2b32] pointer-events-none shadow-md">
+            <span className="w-0.5 h-0.5 rounded-full bg-[#9e9ea7]" />
+            <span className="w-0.5 h-0.5 rounded-full bg-[#9e9ea7]" />
+            <span className="w-0.5 h-0.5 rounded-full bg-[#9e9ea7]" />
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        {/* Multi-Timeline Comparative Matrix */}
+        <ComparisonMatrix
+          timelines={data.timelines}
+          height={bottomPanelHeight}
+          isCollapsed={isBottomCollapsed}
+          onToggleCollapse={() => {
+            setIsBottomCollapsed(prev => {
+              const next = !prev;
+              try {
+                localStorage.setItem('timeline_studio_bottom_collapsed', String(next));
+              } catch (_) {}
+              return next;
+            });
+          }}
+        />
       </main>
+
+      {/* Node Create & Edit Drawer */}
+      <NodeDrawer
+        isOpen={isNodeDrawerOpen}
+        onClose={() => {
+          setIsNodeDrawerOpen(false);
+          setSelectedNode(null);
+        }}
+        node={selectedNode}
+        timelines={data.timelines}
+        defaultTimelineId={defaultNodeTimelineId}
+        defaultStartDate={defaultNodeStartDate}
+        defaultEndDate={defaultNodeEndDate}
+        onSave={handleSaveNode}
+        onDelete={handleDeleteNode}
+        onBranchFromNode={(node) => {
+          setIsNodeDrawerOpen(false);
+          handleOpenBranchModal(node.timelineId, node.id);
+        }}
+      />
+
+      {/* Add / Branch Timeline Modal */}
+      <AddTimelineModal
+        isOpen={isTimelineModalOpen}
+        onClose={() => setIsTimelineModalOpen(false)}
+        timelines={data.timelines}
+        preselectedParentId={preselectedParentId}
+        preselectedBranchNodeId={preselectedBranchNodeId}
+        onCreateTimeline={handleCreateTimeline}
+      />
     </div>
   );
 }
