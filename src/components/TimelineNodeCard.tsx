@@ -163,7 +163,7 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
 
   const currentWidth = Math.max(160, pixelWidth + (isResizing ? resizeDeltaW : 0));
   const effectiveLeft = pixelLeft + (isDragging ? dragDeltaX : 0);
-  const topOffset = 16 + lane * 116;
+  const topOffset = 56 + lane * 130;
 
   return (
     <div
@@ -186,6 +186,59 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Clothesline Knot Peg & Hanger Stem connecting down to card */}
+      <div
+        className="absolute left-6 -translate-x-1/2 pointer-events-none select-none flex flex-col items-center w-5"
+        style={{
+          top: `-${28 + lane * 130}px`,
+          height: `${28 + lane * 130}px`
+        }}
+      >
+        {/* Knot Peg clamped on the timeline wire */}
+        <div
+          className={`w-5 h-5 -mt-2.5 rounded-full flex items-center justify-center transition-transform shadow-md z-30 ${
+            node.status === 'completed'
+              ? 'bg-[#ececf0] text-[#101114] ring-2 ring-[#101114]'
+              : node.status === 'in_progress'
+              ? 'bg-[#181920] border-2 border-white ring-1 ring-[#101114]'
+              : node.status === 'blocked'
+              ? 'bg-[#1c1d22] border-2 border-dashed border-[#9e9ea7]'
+              : 'bg-[#141519] border-2 border-[#52525b]'
+          } ${isHovered ? 'scale-110' : ''}`}
+          title={`Milestone Status: ${node.status}`}
+        >
+          {node.status === 'completed' && <Check className="w-3 h-3 stroke-[3]" />}
+          {node.status === 'in_progress' && (
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+            </span>
+          )}
+          {node.status === 'planned' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-[#71717a]" />
+          )}
+          {node.status === 'blocked' && (
+            <span className="text-[10px] font-bold text-[#ececf0] leading-none">!</span>
+          )}
+        </div>
+
+        {/* Vertical Hanger / Hook Stem */}
+        <div
+          className={`w-0.5 flex-1 transition-colors ${
+            node.status === 'completed'
+              ? 'bg-[#ececf0]/75'
+              : node.status === 'in_progress'
+              ? 'bg-white/60'
+              : 'bg-[#3e404b]'
+          }`}
+        />
+
+        {/* Metallic Clothespin / Bracket on top edge of card */}
+        <div className="w-3.5 h-1.5 -mb-0.5 rounded-t bg-[#2a2b34] border border-[#454754] z-20 flex items-center justify-center">
+          <span className="w-1 h-0.5 rounded-full bg-[#6b6c75]" />
+        </div>
+      </div>
+
       {/* Live drag indicator tooltip */}
       {(isDragging || isResizing) && (
         <div className="absolute -top-7 left-0 px-2 py-0.5 rounded bg-[#ffffff] text-black font-mono text-[10px] font-bold shadow-lg pointer-events-none whitespace-nowrap z-50">
@@ -200,8 +253,7 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
         <div className="flex items-center justify-between gap-1.5 mb-1.5">
           <div className="flex items-center gap-1.5 min-w-0">
             <GripVertical className="w-3 h-3 text-[#6b6c75] opacity-50 group-hover:opacity-100 flex-shrink-0" />
-            {renderStatusIcon()}
-            <span className="font-mono text-[11px] text-[#9e9ea7] tracking-tight truncate">
+            <span className="font-mono text-[11px] text-[#9e9ea7] tracking-tight truncate font-medium">
               {formatDisplayDate(previewStartDate)}
               {previewEndDate && ` – ${formatDisplayDate(previewEndDate)}`}
             </span>

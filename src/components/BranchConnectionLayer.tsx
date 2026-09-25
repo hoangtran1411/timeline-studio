@@ -21,6 +21,10 @@ interface NodeCoords {
   lane: number;
   leftX: number;
   rightX: number;
+  knotX: number;
+  knotY: number;
+  cardTop: number;
+  cardBottom: number;
   centerY: number;
 }
 
@@ -34,7 +38,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
   getTrackTopOffset,
   selectedTrackId
 }) => {
-  // Helper to compute node bounding coordinates
+  // Helper to compute node bounding coordinates and knot position on the clothesline
   const computeNodeCoords = (node: TimelineNode, trackIndex: number): NodeCoords => {
     const leftX = dateToPixelX(node.startDate, originDate, pxPerDay);
     let width = 160;
@@ -45,7 +49,12 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     const rightX = leftX + width;
     const lane = node.lane || 0;
     const trackTop = getTrackTopOffset(trackIndex);
-    const centerY = trackTop + 16 + lane * 116 + 48; // center height of card (~96px)
+    const wireY = trackTop + 28; // The horizontal clothesline wire Y
+    const knotX = leftX + 24;   // Center of the knot peg (left-6 = 24px)
+    const knotY = wireY;
+    const cardTop = trackTop + 56 + lane * 130;
+    const cardBottom = cardTop + 110;
+    const centerY = (cardTop + cardBottom) / 2;
 
     return {
       node,
@@ -53,6 +62,10 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
       lane,
       leftX,
       rightX,
+      knotX,
+      knotY,
+      cardTop,
+      cardBottom,
       centerY
     };
   };
@@ -65,110 +78,110 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     });
   });
 
-  // 1. Generate horizontal track rails and left-to-right milestone connectors for each track
-  const trackSpines: Array<{
+  // 1. Generate horizontal clothesline wires and tension anchors for each track
+  const clotheslineWires: Array<{
     trackId: string;
-    baselineY: number;
+    wireY: number;
     startX: number;
     endX: number;
   }> = [];
 
-  const milestoneConnectors: Array<{
-    id: string;
-    path: string;
+  const leadInWires: Array<{
+    startX: number;
+    endX: number;
+    wireY: number;
     status: string;
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
   }> = [];
 
-  const startCaps: Array<{ x: number; y: number }> = [];
-  const futureArrows: Array<{ path: string; x: number; y: number }> = [];
+  const knotWireSegments: Array<{
+    id: string;
+    startX: number;
+    endX: number;
+    wireY: number;
+    status: string;
+  }> = [];
+
+  const futureWires: Array<{
+    startX: number;
+    endX: number;
+    wireY: number;
+  }> = [];
+
+  const knotClampBackings: Array<{
+    x: number;
+    y: number;
+    status: string;
+  }> = [];
 
   timelines.forEach((track, trackIndex) => {
     const trackTop = getTrackTopOffset(trackIndex);
-    const baselineY = trackTop + 64; // lane 0 center line
+    const wireY = trackTop + 28;
+    const startX = 24;
+    const endX = Math.max(canvasWidth - 32, 1200);
 
-    // Track baseline rail running horizontally across the canvas from left to right
-    trackSpines.push({
+    // Continuous clothesline wire running across track
+    clotheslineWires.push({
       trackId: track.id,
-      baselineY,
-      startX: 32,
-      endX: Math.max(canvasWidth - 48, 1200)
+      wireY,
+      startX,
+      endX
     });
 
     // Sort nodes on this track chronologically
     const sortedNodes = [...track.nodes].sort((a, b) => a.startDate.localeCompare(b.startDate));
     if (sortedNodes.length === 0) return;
 
-    // Start anchor before first milestone
+    // Register under-knot clamp backings
+    sortedNodes.forEach((node) => {
+      const coords = nodeMap.get(node.id);
+      if (coords) {
+        knotClampBackings.push({
+          x: coords.knotX,
+          y: coords.knotY,
+          status: coords.node.status
+        });
+      }
+    });
+
+    // Lead-in wire before the first milestone knot
     const firstCoords = nodeMap.get(sortedNodes[0].id);
     if (firstCoords) {
-      const startAnchorX = Math.max(32, firstCoords.leftX - 56);
-      milestoneConnectors.push({
-        id: `start-lead-${track.id}`,
-        path: `M ${startAnchorX} ${firstCoords.centerY} L ${firstCoords.leftX} ${firstCoords.centerY}`,
-        status: firstCoords.node.status,
-        startX: startAnchorX,
-        startY: firstCoords.centerY,
-        endX: firstCoords.leftX,
-        endY: firstCoords.centerY
+      const leadStartX = Math.max(24, firstCoords.knotX - 48);
+      leadInWires.push({
+        startX: leadStartX,
+        endX: firstCoords.knotX,
+        wireY,
+        status: firstCoords.node.status
       });
-      startCaps.push({ x: startAnchorX, y: firstCoords.centerY });
     }
 
-    // Connect sequential milestones strictly from LEFT to RIGHT
+    // Connect sequential milestone knots strictly from LEFT to RIGHT along the wire
     for (let i = 0; i < sortedNodes.length - 1; i++) {
       const curr = nodeMap.get(sortedNodes[i].id);
       const next = nodeMap.get(sortedNodes[i + 1].id);
       if (!curr || !next) continue;
 
-      const startX = curr.rightX;
-      const startY = curr.centerY;
-      const endX = next.leftX;
-      const endY = next.centerY;
-
-      let path = '';
-      if (endX >= startX) {
-        if (startY === endY) {
-          // Direct horizontal straight line going from left to right
-          path = `M ${startX} ${startY} L ${endX} ${endY}`;
-        } else {
-          // Smooth forward S-curve bezier transitioning between collision lanes
-          const midX = (startX + endX) / 2;
-          path = `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
-        }
-      } else {
-        // In the event of overlapping cards on different lanes, forward curve
-        const midX = Math.max(startX, endX) + 24;
-        path = `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
-      }
-
-      milestoneConnectors.push({
-        id: `connect-${curr.node.id}-${next.node.id}`,
-        path,
-        status: curr.node.status,
-        startX,
-        startY,
-        endX,
-        endY
+      knotWireSegments.push({
+        id: `wire-segment-${curr.node.id}-${next.node.id}`,
+        startX: curr.knotX,
+        endX: next.knotX,
+        wireY,
+        status: curr.node.status
       });
     }
 
-    // Future continuation arrow after the last milestone
+    // Future continuation wire with forward arrow after the last milestone knot
     const lastCoords = nodeMap.get(sortedNodes[sortedNodes.length - 1].id);
     if (lastCoords) {
-      const futureEndX = lastCoords.rightX + 80;
-      futureArrows.push({
-        path: `M ${lastCoords.rightX} ${lastCoords.centerY} L ${futureEndX} ${lastCoords.centerY}`,
-        x: futureEndX,
-        y: lastCoords.centerY
+      futureWires.push({
+        startX: lastCoords.knotX,
+        endX: lastCoords.knotX + 64,
+        wireY
       });
     }
   });
 
-  // 2. Calculate branch lines flowing forward from parent milestone to child track
+  // 2. Calculate branch offshoots flowing forward and down from parent knot to child wire
   const branchLines: Array<{
     id: string;
     path: string;
@@ -183,28 +196,27 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     if (track.parentTimelineId && track.branchPointNodeId) {
       const parentCoords = nodeMap.get(track.branchPointNodeId);
       if (parentCoords) {
-        // Branch emerges from the right side of the parent milestone
-        const startX = parentCoords.rightX;
-        const startY = parentCoords.centerY;
+        // Branch emerges from the parent knot peg on the clothesline
+        const startX = parentCoords.knotX;
+        const startY = parentCoords.knotY;
 
         const childTrackTop = getTrackTopOffset(trackIndex);
-        const childBaselineY = childTrackTop + 64;
+        const childWireY = childTrackTop + 28;
 
-        // Find child's first node to connect to
+        // Find child's first node or default landing point
         const childSortedNodes = [...track.nodes].sort((a, b) => a.startDate.localeCompare(b.startDate));
         let endX = startX + 64;
-        let endY = childBaselineY;
+        const endY = childWireY;
 
         if (childSortedNodes.length > 0) {
           const firstChildCoords = nodeMap.get(childSortedNodes[0].id);
           if (firstChildCoords) {
-            endX = Math.max(startX + 48, firstChildCoords.leftX);
-            endY = firstChildCoords.centerY;
+            endX = Math.max(startX + 48, firstChildCoords.knotX);
           }
         }
 
-        // Smooth cubic bezier flowing forward (LEFT to RIGHT) and down to child track
-        const deltaX = Math.max(40, endX - startX);
+        // Smooth cubic bezier flowing forward (LEFT to RIGHT) and down to child clothesline
+        const deltaX = Math.max(48, endX - startX);
         const cp1x = startX + deltaX * 0.45;
         const cp1y = startY;
         const cp2x = endX - deltaX * 0.45;
@@ -219,13 +231,13 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
           startY,
           endX,
           endY,
-          label: `Branch: ${track.title}`
+          label: track.title
         });
       }
     }
   });
 
-  // 3. Calculate dependencies flowing forward from fromNode to toNode
+  // 3. Calculate dependencies between knots
   const depLines: Array<{
     id: string;
     path: string;
@@ -241,16 +253,24 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     const toInfo = nodeMap.get(dep.toNodeId);
 
     if (fromInfo && toInfo) {
-      const startX = fromInfo.rightX;
-      const startY = fromInfo.centerY;
-      const endX = toInfo.leftX;
-      const endY = toInfo.centerY;
+      const startX = fromInfo.knotX;
+      const startY = fromInfo.knotY;
+      const endX = toInfo.knotX;
+      const endY = toInfo.knotY;
 
-      const deltaX = Math.max(30, Math.abs(endX - startX));
-      const cp1x = startX + deltaX * 0.4;
-      const cp2x = endX - deltaX * 0.4;
-
-      const path = `M ${startX} ${startY} C ${cp1x} ${startY}, ${cp2x} ${endY}, ${endX} ${endY}`;
+      let path = '';
+      if (startY === endY) {
+        // Same track dependency: gentle upward arched curve over the clothesline wire
+        const midX = (startX + endX) / 2;
+        const archY = startY - Math.min(28, Math.max(14, Math.abs(endX - startX) * 0.12));
+        path = `M ${startX} ${startY} Q ${midX} ${archY}, ${endX} ${endY}`;
+      } else {
+        // Cross-track dependency: smooth cubic bezier forward and up/down
+        const deltaX = Math.max(36, Math.abs(endX - startX));
+        const cp1x = startX + deltaX * 0.4;
+        const cp2x = endX - deltaX * 0.4;
+        path = `M ${startX} ${startY} C ${cp1x} ${startY}, ${cp2x} ${endY}, ${endX} ${endY}`;
+      }
 
       depLines.push({
         id: dep.id,
@@ -264,7 +284,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     }
   });
 
-  // 4. Calculate continuous path along selected track for the traveling light beam
+  // 4. Calculate continuous path along clothesline wire for the traveling light beam on selected track
   const selectedTrackPath = React.useMemo(() => {
     if (!selectedTrackId) return null;
     const track = timelines.find((t) => t.id === selectedTrackId);
@@ -276,28 +296,12 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     const coords = sortedNodes.map((n) => nodeMap.get(n.id)).filter(Boolean) as NodeCoords[];
     if (coords.length === 0) return null;
 
-    const first = coords[0];
-    const startX = Math.max(32, first.leftX - 48);
-    let d = `M ${startX} ${first.centerY} L ${first.leftX} ${first.centerY}`;
+    const wireY = coords[0].knotY;
+    const startX = Math.max(24, coords[0].knotX - 48);
+    const endX = coords[coords.length - 1].knotX + 64;
 
-    for (let i = 0; i < coords.length; i++) {
-      const curr = coords[i];
-      d += ` L ${curr.rightX} ${curr.centerY}`;
-
-      if (i < coords.length - 1) {
-        const next = coords[i + 1];
-        if (curr.centerY === next.centerY) {
-          d += ` L ${next.leftX} ${next.centerY}`;
-        } else {
-          const midX = (curr.rightX + next.leftX) / 2;
-          d += ` C ${midX} ${curr.centerY}, ${midX} ${next.centerY}, ${next.leftX} ${next.centerY}`;
-        }
-      }
-    }
-
-    const last = coords[coords.length - 1];
-    d += ` L ${last.rightX + 80} ${last.centerY}`;
-    return d;
+    // The light beam travels horizontally straight along the clothesline wire through every knot
+    return `M ${startX} ${wireY} L ${endX} ${wireY}`;
   }, [selectedTrackId, timelines, nodeMap]);
 
   return (
@@ -313,9 +317,9 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
       }}
     >
       <defs>
-        {/* Completed Timeline Flow Arrow */}
+        {/* Completed Wire Flow Arrow */}
         <marker
-          id="timeline-arrow-completed"
+          id="wire-arrow-completed"
           viewBox="0 0 10 10"
           refX="7"
           refY="5"
@@ -326,9 +330,9 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
           <path d="M 1 2 L 7 5 L 1 8 z" fill="#ececf0" />
         </marker>
 
-        {/* Planned / In-Progress Timeline Flow Arrow */}
+        {/* Active Wire Flow Arrow */}
         <marker
-          id="timeline-arrow-planned"
+          id="wire-arrow-active"
           viewBox="0 0 10 10"
           refX="7"
           refY="5"
@@ -337,6 +341,19 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
           orient="auto"
         >
           <path d="M 1 2 L 7 5 L 1 8 z" fill="#9e9ea7" />
+        </marker>
+
+        {/* Planned Wire Flow Arrow */}
+        <marker
+          id="wire-arrow-planned"
+          viewBox="0 0 10 10"
+          refX="7"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto"
+        >
+          <path d="M 1 2 L 7 5 L 1 8 z" fill="#52525b" />
         </marker>
 
         {/* Future Trajectory Arrow */}
@@ -388,78 +405,131 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         </filter>
       </defs>
 
-      {/* 1. Underlying Track Rails (Spines) */}
-      {trackSpines.map((spine) => (
-        <g key={spine.trackId} opacity="0.45">
+      {/* 1. Underlying Continuous Clothesline Wires across each track */}
+      {clotheslineWires.map((wire) => (
+        <g key={wire.trackId}>
+          {/* Subtle background taut wire */}
           <line
-            x1={spine.startX}
-            y1={spine.baselineY}
-            x2={spine.endX}
-            y2={spine.baselineY}
-            stroke="#2a2b32"
+            x1={wire.startX}
+            y1={wire.wireY}
+            x2={wire.endX}
+            y2={wire.wireY}
+            stroke="#262731"
             strokeWidth="1.5"
-            strokeDasharray="6 4"
           />
-          <path
-            d={`M ${spine.endX} ${spine.baselineY - 4} L ${spine.endX + 6} ${spine.baselineY} L ${spine.endX} ${spine.baselineY + 4}`}
-            fill="none"
-            stroke="#383a42"
+
+          {/* Left Wall Hook / Tension Eyelet */}
+          <g>
+            <circle cx={wire.startX} cy={wire.wireY} r="4.5" fill="#181920" stroke="#454754" strokeWidth="1.5" />
+            <circle cx={wire.startX} cy={wire.wireY} r="1.5" fill="#ececf0" />
+          </g>
+
+          {/* Right End Tension Bracket */}
+          <g>
+            <rect
+              x={wire.endX - 7}
+              y={wire.wireY - 3}
+              width="7"
+              height="6"
+              rx="1"
+              fill="#181920"
+              stroke="#454754"
+              strokeWidth="1"
+            />
+            <line
+              x1={wire.endX}
+              y1={wire.wireY - 4.5}
+              x2={wire.endX}
+              y2={wire.wireY + 4.5}
+              stroke="#52525b"
+              strokeWidth="1.5"
+            />
+          </g>
+        </g>
+      ))}
+
+      {/* 2. Lead-In Wires entering first milestone on each track */}
+      {leadInWires.map((lead, idx) => (
+        <line
+          key={`leadin-${idx}`}
+          x1={lead.startX}
+          y1={lead.wireY}
+          x2={lead.endX}
+          y2={lead.wireY}
+          stroke="#383a45"
+          strokeWidth="1.5"
+          strokeDasharray="4 3"
+        />
+      ))}
+
+      {/* 3. Under-Knot Clamp Backings (anchoring the knot onto the wire) */}
+      {knotClampBackings.map((knot, idx) => (
+        <g key={`knot-backing-${idx}`}>
+          <circle
+            cx={knot.x}
+            cy={knot.y}
+            r="12"
+            fill="#121317"
+            stroke="#2a2b34"
             strokeWidth="1.5"
+            opacity="0.85"
           />
         </g>
       ))}
 
-      {/* 2. Track Origin Start Caps */}
-      {startCaps.map((cap, idx) => (
-        <g key={`start-cap-${idx}`}>
-          <circle cx={cap.x} cy={cap.y} r="5" fill="#141519" stroke="#9e9ea7" strokeWidth="2" />
-          <circle cx={cap.x} cy={cap.y} r="2" fill="#ececf0" />
-        </g>
-      ))}
+      {/* 4. Active Clothesline Wire Segments between Knots */}
+      {knotWireSegments.map((seg) => {
+        const isCompleted = seg.status === 'completed';
+        const isInProgress = seg.status === 'in_progress';
 
-      {/* 3. Sequential Milestone Connectors (Strictly Left to Right) */}
-      {milestoneConnectors.map((conn) => {
-        const isCompleted = conn.status === 'completed';
-        const isInProgress = conn.status === 'in_progress';
         return (
-          <g key={conn.id}>
-            {/* Background shadow path for contrast against grid */}
-            <path
-              d={conn.path}
-              fill="none"
+          <g key={seg.id}>
+            {/* Contrast shadow behind wire */}
+            <line
+              x1={seg.startX}
+              y1={seg.wireY}
+              x2={seg.endX}
+              y2={seg.wireY}
               stroke="#101114"
               strokeWidth="4"
             />
-            {/* Active timeline line */}
-            <path
-              d={conn.path}
-              fill="none"
-              stroke={isCompleted ? '#ececf0' : isInProgress ? '#9e9ea7' : '#52525b'}
+            {/* Illuminated / active clothesline wire */}
+            <line
+              x1={seg.startX}
+              y1={seg.wireY}
+              x2={seg.endX}
+              y2={seg.wireY}
+              stroke={isCompleted ? '#ececf0' : isInProgress ? '#9e9ea7' : '#454754'}
               strokeWidth={isCompleted ? '2' : '1.5'}
-              strokeDasharray={isCompleted ? undefined : '5 4'}
-              markerEnd={isCompleted ? 'url(#timeline-arrow-completed)' : 'url(#timeline-arrow-planned)'}
+              strokeDasharray={isCompleted ? undefined : isInProgress ? '5 3' : '4 4'}
+              markerEnd={
+                isCompleted
+                  ? 'url(#wire-arrow-completed)'
+                  : isInProgress
+                  ? 'url(#wire-arrow-active)'
+                  : 'url(#wire-arrow-planned)'
+              }
             />
-            {/* Node Exit Anchor Point */}
-            <circle cx={conn.startX} cy={conn.startY} r="3" fill={isCompleted ? '#ececf0' : '#71717a'} />
           </g>
         );
       })}
 
-      {/* 4. Future Trajectory Arrows (Flowing Forward into the Future) */}
-      {futureArrows.map((fa, idx) => (
-        <g key={`future-${idx}`}>
-          <path
-            d={fa.path}
-            fill="none"
-            stroke="#3f3f46"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-            markerEnd="url(#future-arrow)"
-          />
-        </g>
+      {/* 5. Future Trajectory Wires (continuing past the last knot) */}
+      {futureWires.map((fw, idx) => (
+        <line
+          key={`future-${idx}`}
+          x1={fw.startX}
+          y1={fw.wireY}
+          x2={fw.endX}
+          y2={fw.wireY}
+          stroke="#3f3f46"
+          strokeWidth="1.5"
+          strokeDasharray="4 4"
+          markerEnd="url(#future-arrow)"
+        />
       ))}
 
-      {/* 5. Branch Offshoot Lines (Flowing Left to Right from Parent Node) */}
+      {/* 6. Branch Offshoots (Dropping gracefully from parent knot to child wire) */}
       {branchLines.map((branch) => (
         <g key={branch.id}>
           {/* Branch curve with smooth left-to-right flow */}
@@ -471,13 +541,13 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             strokeDasharray="6 4"
             markerEnd="url(#branch-arrow)"
           />
-          {/* Branch start pivot anchor */}
-          <circle cx={branch.startX} cy={branch.startY} r="4" fill="#141519" stroke="#ececf0" strokeWidth="2" />
+          {/* Branch start pivot anchor on parent knot */}
+          <circle cx={branch.startX} cy={branch.startY} r="4.5" fill="#141519" stroke="#ececf0" strokeWidth="1.5" />
           {/* Branch indicator pill */}
           <rect
-            x={branch.startX + 16}
+            x={branch.startX + 18}
             y={(branch.startY + branch.endY) / 2 - 9}
-            width="68"
+            width="82"
             height="18"
             rx="4"
             fill="#18191e"
@@ -485,19 +555,19 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             strokeWidth="1"
           />
           <text
-            x={branch.startX + 50}
+            x={branch.startX + 59}
             y={(branch.startY + branch.endY) / 2 + 3}
             textAnchor="middle"
             fill="#9e9ea7"
             fontSize="9"
             fontFamily="monospace"
           >
-            ⑂ Branch ➔
+            ⑂ {branch.label.length > 9 ? branch.label.slice(0, 9) + '…' : branch.label}
           </text>
         </g>
       ))}
 
-      {/* 6. Inter-Node Dependencies (Flowing Left to Right) */}
+      {/* 7. Inter-Node Dependencies between Knots */}
       {depLines.map((dep) => (
         <g key={dep.id}>
           <path
@@ -512,7 +582,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         </g>
       ))}
 
-      {/* 7. Traveling Light Beam on Selected Track (Tia sáng di chuyển từ đầu đến cuối timeline) */}
+      {/* 8. Traveling Light Beam on Selected Track (Tia sáng di chuyển dọc sợi dây clothesline qua các nút) */}
       {selectedTrackPath && (
         <g key={`beam-${selectedTrackId}`} className="pointer-events-none">
           {/* Luminous aura track pulse */}
@@ -520,12 +590,11 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             d={selectedTrackPath}
             fill="none"
             stroke="#ffffff"
-            strokeWidth="4"
+            strokeWidth="3.5"
             strokeOpacity="0.85"
             strokeLinecap="round"
-            strokeLinejoin="round"
             filter="url(#beam-glow)"
-            strokeDasharray="100 1400"
+            strokeDasharray="80 1200"
             className="timeline-laser-tail"
           />
 
@@ -534,25 +603,25 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             d={selectedTrackPath}
             fill="none"
             stroke="#ffffff"
-            strokeWidth="2.5"
+            strokeWidth="2"
             strokeLinecap="round"
-            strokeDasharray="60 1400"
+            strokeDasharray="45 1200"
             className="timeline-laser-core"
           />
 
-          {/* Traveling Spark / Photon Head that glides along the timeline */}
+          {/* Traveling Spark / Photon Head that glides along the clothesline wire through each knot */}
           <g>
             <animateMotion
               path={selectedTrackPath}
-              dur="3.5s"
+              dur="3.6s"
               repeatCount="indefinite"
             />
             {/* Soft outer glow */}
-            <circle cx="0" cy="0" r="10" fill="#ffffff" opacity="0.25" filter="url(#beam-glow)" />
+            <circle cx="0" cy="0" r="9" fill="#ffffff" opacity="0.25" filter="url(#beam-glow)" />
             {/* Inner halo */}
-            <circle cx="0" cy="0" r="5" fill="#ececf0" opacity="0.75" />
+            <circle cx="0" cy="0" r="4.5" fill="#ececf0" opacity="0.8" />
             {/* Bright spark center */}
-            <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+            <circle cx="0" cy="0" r="2" fill="#ffffff" />
           </g>
         </g>
       )}

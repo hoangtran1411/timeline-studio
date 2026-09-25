@@ -134,8 +134,9 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         maxLane = n.lane;
       }
     });
-    // 148px minimum for 1 lane, and +116px for each collision lane so cards and bottom tags never get cut off
-    return Math.max(148, 148 + maxLane * 116);
+    // Expanded track height: 210px base for lane 0 (28px wire top margin + 28px hanger + 120px card + 34px bottom padding)
+    // +130px for each collision lane so cards and hover toolbars never overflow into adjacent tracks
+    return Math.max(210, 210 + maxLane * 130);
   };
 
   const getTrackTopOffset = (trackIndex: number): number => {
@@ -251,7 +252,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                     minHeight: `${trackHeight}px`,
                     maxHeight: `${trackHeight}px`
                   }}
-                  className={`relative group/track transition-all flex-shrink-0 box-border overflow-visible ${
+                  className={`relative group/track transition-all flex-shrink-0 box-border overflow-visible border-b border-[#222328] ${
                     isSelectedTrack
                       ? 'bg-[#15161c]/80 ring-1 ring-inset ring-[#ffffff]/25 shadow-inner'
                       : selectedTrackId

@@ -74,12 +74,20 @@ linear-gradient(to bottom, rgba(236, 236, 240, 0.055) 1px, transparent 1px)
 
 ## 5. Component Language & Interaction Models
 
-### 5.1 Timeline Node Cards
+### 5.1 Clothesline Visual Model & Milestone Cards (Sợi Dây Phơi Quần Áo)
 
+- **The Clothesline Wire**: Each track features a taut, continuous horizontal wire (`wireY = trackTop + 28px`) running across the entire canvas with metal tension wall hooks at the edges.
+- **Track Height**: Base track height is `210px` for a single lane (`+130px` per additional collision lane), providing generous vertical margin and breathing space so hanging cards and hover action toolbars never overflow or collide with adjacent timelines.
+- **Knot Pegs (Nút Dây)**: Rather than lines pointing directly into card content boxes, each milestone connects to a knot peg clamped directly on the timeline wire (`y = wireY`, `x = nodeLeft + 24px`).
+- **Status in the Knot**: The knot peg itself visualizes the milestone status:
+  - *Completed*: Solid white disc with black checkmark.
+  - *In Progress*: Dark ring with animated pulsing white center spark.
+  - *Planned*: Dark ring with muted center dot.
+  - *Blocked*: Dashed ring with exclamation mark.
+- **Vertical Hanger Stem**: A vertical metal hook stem (`w-0.5`) suspends the milestone card below the wire (`top: 56px + lane * 130px`), terminated with a metallic clothespin bracket on the top edge of the card.
 - **Base Dimensions**: `min-width: 160px`, height determined by content (~96px to 110px).
-- **Vertical Lane Offset**: `top: 16px + lane * 116px` with a generous 36px bottom margin to prevent overlap.
 - **Hover Toolbar**: Smoothly reveals quick action buttons (`Edit`, `Branch from node`, `Insert after`, `Delete`).
-- **Drag-to-Move**: Click and drag horizontally along the canvas. Uses pointer capture, displays a floating live date delta tooltip (`📅 18 Sep – 02 Oct (+3d)`), and snaps to day increments.
+- **Drag-to-Move**: Click and drag horizontally along the canvas. The knot slides seamlessly along the clothesline wire in real-time, displays a floating live date delta tooltip (`📅 18 Sep – 02 Oct (+3d)`), and snaps to day increments.
 - **Drag-to-Resize**: Hovering over the right edge displays `↔ cursor-ew-resize`. Dragging extends or shortens milestone duration.
 
 ### 5.2 Status System (Monochrome Badges)
@@ -113,7 +121,7 @@ linear-gradient(to bottom, rgba(236, 236, 240, 0.055) 1px, transparent 1px)
 
 - **Track Selection**: Clicking any track card in the Left Track Dock or on the canvas sets it as the active focused timeline with a white indicator border.
 - **Spotlight Mode**: Non-focused tracks gently dim to 65% opacity to focus attention.
-- **Traveling Light Beam**: An illuminated monochrome photon pulse (`#ffffff`) glides smoothly from the first milestone to the final milestone along the exact connected timeline trajectory via SVG `<animateMotion>`.
+- **Traveling Light Beam**: An illuminated monochrome photon pulse (`#ffffff`) glides smoothly from left to right along the continuous horizontal clothesline wire (`y = wireY`), passing directly through each milestone knot peg via SVG `<animateMotion>`.
 - **Laser Trailing Tail**: A luminous trailing stroke with soft bloom filter (`#beam-glow`) accompanies the spark head, reinforcing temporal directionality from past to future.
 
 ---
