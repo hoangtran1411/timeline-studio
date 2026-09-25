@@ -7,7 +7,7 @@ import { ChronoCanvas, ChronoCanvasRef } from '@/components/ChronoCanvas';
 import { NodeDrawer } from '@/components/NodeDrawer';
 import { AddTimelineModal } from '@/components/AddTimelineModal';
 import { ComparisonMatrix } from '@/components/ComparisonMatrix';
-import { parseDate, getMidpointDate, diffInDays, addDays } from '@/utils/date-utils';
+import { parseDate, getMidpointDate, diffInDays, addDays, formatDateStr } from '@/utils/date-utils';
 
 export default function TimelineStudioPage() {
   const [data, setData] = useState<FullTimelineData>({ timelines: [], dependencies: [] });
@@ -54,28 +54,30 @@ export default function TimelineStudioPage() {
     fetchData();
   }, []);
 
-  // Compute overall timeline date span
+  // Dynamic today's date string in YYYY-MM-DD based on current real-time clock
+  const todayDateStr = useMemo(() => formatDateStr(new Date()), []);
+
+  // Compute overall timeline date span dynamically encompassing all nodes and today
   const { originDate, totalDays } = useMemo(() => {
-    let minDate = '2024-07-01';
-    let maxDate = '2024-12-31';
+    let minDate = todayDateStr;
+    let maxDate = todayDateStr;
 
     data.timelines.forEach(track => {
       track.nodes.forEach(node => {
-        if (node.startDate < minDate) minDate = node.startDate;
+        if (!minDate || node.startDate < minDate) minDate = node.startDate;
         const end = node.endDate || node.startDate;
-        if (end > maxDate) maxDate = end;
+        if (!maxDate || end > maxDate) maxDate = end;
       });
     });
 
     const origin = parseDate(minDate);
     // Add extra padding days for smooth scrolling
-    const days = Math.max(180, diffInDays(minDate, maxDate) + 45);
+    const days = Math.max(180, diffInDays(minDate, maxDate) + 60);
     return { originDate: origin, totalDays: days };
-  }, [data.timelines]);
+  }, [data.timelines, todayDateStr]);
 
   // Base 6px per day at 100% zoom (1 week = ~42px)
   const pxPerDay = 6.2 * zoom;
-  const todayDateStr = '2024-10-15';
 
   // Total nodes calculation
   const totalNodesCount = useMemo(() => {
