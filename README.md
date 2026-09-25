@@ -4,7 +4,7 @@
 [![CI](https://github.com/hoangtran1411/timeline-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/hoangtran1411/timeline-studio/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js-16.3-black?logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
 
 > **A high-precision, soft-contrast monochrome timeline and roadmap studio inspired by engineering quad-ruled notebooks.**
@@ -105,7 +105,7 @@ For a full reference of UI terms, component files, and layout diagrams, see [`ke
 | **Framework** | [Next.js 16](https://nextjs.org) (App Router, Server Actions, Client Components) |
 | **UI & State** | [React 19](https://react.dev), Tailwind CSS v4, Lucide React |
 | **Database** | Built-in [Node.js SQLite](https://nodejs.org/api/sqlite.html) (`node:sqlite`) |
-| **Language** | [TypeScript 5](https://www.typescriptlang.org) |
+| **Language** | [TypeScript 7](https://www.typescriptlang.org) (Native Go compiler) |
 | **Code Quality** | ESLint, Markdownlint |
 | **CI/CD** | GitHub Actions |
 
