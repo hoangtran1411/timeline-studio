@@ -55,7 +55,7 @@
 | **Notebook Quad Grid** | `ChronoCanvas.tsx` | Technical drafting graph-paper background (24px minor, 120px major). |
 | **Between Node Inserter** | `BetweenNodeInserter.tsx` | Dashed hover guide with `+` button in open spans between two knots. |
 | **Timeline Node Card** | `TimelineNodeCard.tsx` | The milestone card displaying title, dates, tags, and quick actions. |
-| **Duration Resize Handle** | `TimelineNodeCard.tsx` | Right-edge handle (`cursor-ew-resize`) extending milestone duration. |
+| **Card Width Resize Handle** | `TimelineNodeCard.tsx` | Right-edge handle (`cursor-ew-resize`) resizing card width in localStorage. |
 | **Branch Curve** | `BranchConnectionLayer.tsx` | Smooth cubic Bézier curve connecting a parent knot to a child track. |
 | **Dependency Line** | `BranchConnectionLayer.tsx` | Dotted line with directional arrow showing task dependencies. |
 | **Node Drawer** | `NodeDrawer.tsx` | Slide-over inspector panel for creating and editing milestone details. |
@@ -100,7 +100,7 @@
 - **Behavior**:
   - Prevents accidental horizontal dragging along the branch line.
   - Displays a floating badge when drag is attempted: `🔒 Milestone locked — click padlock to unlock`.
-  - Disables right-edge duration resizing while locked.
+  - The right-edge Card Width Resize Handle remains active by default so layout presentation can always be adjusted.
   - Single click on the padlock button (in the card header, knot peg, or hover menu) unlocks the milestone for moving.
 
 ### 5. `Time Ruler` & `Today Indicator`
@@ -131,14 +131,15 @@
 - **Visual**: Vertical dashed line with a circular `+` button positioned midway between adjacent knots on the wire.
 - **Interaction**: Hover to reveal; click to open Node Drawer pre-filled with the calculated midpoint date. Disabled on dimmed/unselected tracks.
 
-### 9. `Timeline Node Card` & `Duration Resize Handle`
+### 9. `Timeline Node Card` & `Card Width Resize Handle`
 
 - **Location**: `src/components/TimelineNodeCard.tsx`
 - **Visual**: Tactile charcoal card (`#18191e`) suspended from the wire.
 - **Controls**:
   - **Card Header**: Drag handle / Lock button, formatted date span, inline quick actions (Edit, Branch, Insert, Delete).
   - **Card Body**: Milestone title, description preview, tag pills, priority dot.
-  - **Right Edge**: Transparent grab handle (`w-2 cursor-ew-resize`) for dragging to extend/shorten duration.
+  - **Right Edge**: Draggable handle (`w-3 cursor-ew-resize`) for adjusting card display width. Enabled by default on all cards.
+  - **Storage**: Custom widths are persisted in `localStorage.getItem('timeline_studio_card_widths')`. Double-click the handle to reset back to default.
 
 ### 10. `Branch Curve` & `Dependency Line`
 

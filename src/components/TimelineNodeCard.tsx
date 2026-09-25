@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { TimelineNode } from '@/types/timeline';
 import { formatDisplayDate, addDays } from '@/utils/date-utils';
 import { Check, AlertCircle, Edit3, Plus, GitFork, Trash2, GripVertical, Lock, Unlock } from 'lucide-react';
@@ -44,6 +44,22 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
   const lockNoticeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isLocked = node.status === 'completed' && !isUnlocked;
+
+  // Custom card width persisted in localStorage (avoids database bloat)
+  const [customWidth, setCustomWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('timeline_studio_card_widths');
+      if (raw) {
+        const map = JSON.parse(raw);
+        const saved = map[node.id];
+        if (typeof saved === 'number' && saved >= 160 && saved <= 900) {
+          setCustomWidth(saved);
+        }
+      }
+    } catch (_) {}
+  }, [node.id]);
 
   const triggerLockNotice = () => {
     setShowLockNotice(true);
@@ -112,9 +128,8 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
     } catch (_) {}
   };
 
-  // Drag-to-resize pointer handler on right edge
+  // Drag-to-resize pointer handler on right edge (Available by default, persists to localStorage)
   const handlePointerDownResize = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (isLocked) return;
     e.stopPropagation();
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -148,10 +163,11 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
         setDragDeltaX(delta);
       }
     } else if (pointerState.current.mode === 'resize') {
-      if (isLocked) return;
       setResizeDeltaW(delta);
     }
   };
+
+  const baseWidth = customWidth ?? pixelWidth;
 
   const handlePointerUp = async (e: React.PointerEvent<HTMLDivElement>) => {
     if (!pointerState.current) return;
@@ -178,15 +194,15 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
         // Click on locked card opens edit drawer
         onSelect(node);
       }
-    } else if (state.mode === 'resize' && !isLocked) {
-      const addedDays = Math.round(resizeDeltaW / pxPerDay);
-      if (addedDays !== 0) {
-        const currentEnd = node.endDate || addDays(node.startDate, 7);
-        const newEnd = addDays(currentEnd, addedDays);
-        if (newEnd >= node.startDate) {
-          await onMoveNode(node.id, node.startDate, newEnd);
-        }
-      }
+    } else if (state.mode === 'resize') {
+      const finalWidth = Math.max(160, Math.min(900, baseWidth + resizeDeltaW));
+      setCustomWidth(finalWidth);
+      try {
+        const raw = localStorage.getItem('timeline_studio_card_widths');
+        const map = raw ? JSON.parse(raw) : {};
+        map[node.id] = finalWidth;
+        localStorage.setItem('timeline_studio_card_widths', JSON.stringify(map));
+      } catch (_) {}
     }
 
     setIsDragging(false);
@@ -195,12 +211,25 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
     setResizeDeltaW(0);
   };
 
+  const handleResetCardWidth = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCustomWidth(null);
+    try {
+      const raw = localStorage.getItem('timeline_studio_card_widths');
+      if (raw) {
+        const map = JSON.parse(raw);
+        delete map[node.id];
+        localStorage.setItem('timeline_studio_card_widths', JSON.stringify(map));
+      }
+    } catch (_) {}
+  };
+
   // Dynamic preview date calculation during drag
   const currentDaysShift = isDragging ? Math.round(dragDeltaX / pxPerDay) : 0;
   const previewStartDate = isDragging ? addDays(node.startDate, currentDaysShift) : node.startDate;
   const previewEndDate = isDragging && node.endDate ? addDays(node.endDate, currentDaysShift) : node.endDate;
 
-  const currentWidth = Math.max(160, pixelWidth + (isResizing ? resizeDeltaW : 0));
+  const currentWidth = Math.max(160, Math.min(900, baseWidth + (isResizing ? resizeDeltaW : 0)));
   const effectiveLeft = pixelLeft + (isDragging ? dragDeltaX : 0);
   const topOffset = 56 + lane * 130;
 
@@ -300,12 +329,19 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
         </div>
       </div>
 
-      {/* Live drag indicator tooltip */}
-      {(isDragging || isResizing) && (
+      {/* Live drag indicator tooltip (moving dates along the branch wire) */}
+      {isDragging && (
         <div className="absolute -top-7 left-0 px-2 py-0.5 rounded bg-[#ffffff] text-black font-mono text-[10px] font-bold shadow-lg pointer-events-none whitespace-nowrap z-50">
-          {isDragging
-            ? `${formatDisplayDate(previewStartDate)}${previewEndDate ? ' – ' + formatDisplayDate(previewEndDate) : ''} (${currentDaysShift >= 0 ? '+' : ''}${currentDaysShift}d)`
-            : `Extend duration (${Math.round(resizeDeltaW / pxPerDay) >= 0 ? '+' : ''}${Math.round(resizeDeltaW / pxPerDay)}d)`}
+          {formatDisplayDate(previewStartDate)}
+          {previewEndDate ? ' – ' + formatDisplayDate(previewEndDate) : ''}
+          {' '}({currentDaysShift >= 0 ? '+' : ''}{currentDaysShift}d)
+        </div>
+      )}
+
+      {/* Live card width resize indicator (persisted in localStorage) */}
+      {isResizing && (
+        <div className="absolute -top-7 right-0 px-2 py-0.5 rounded bg-[#ececf0] text-black font-mono text-[10px] font-bold shadow-lg pointer-events-none whitespace-nowrap z-50">
+          Width: {currentWidth}px ({resizeDeltaW >= 0 ? '+' : ''}{resizeDeltaW}px)
         </div>
       )}
 
@@ -453,16 +489,25 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
         </div>
       </div>
 
-      {/* Right Edge Drag-to-Resize Handle */}
-      {!isLocked && (
+      {/* Right Edge Drag-to-Resize Handle (Always available by default, persists to localStorage) */}
+      <div
+        className={`absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize z-20 flex items-center justify-end pr-0.5 transition-colors group/resize rounded-r-lg ${
+          isResizing ? 'bg-[#ececf0]/20' : 'hover:bg-[#ececf0]/15'
+        }`}
+        title="Drag right edge to resize card width (Double-click to reset) — saved in localStorage"
+        onPointerDown={handlePointerDownResize}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onDoubleClick={handleResetCardWidth}
+      >
         <div
-          className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-[#ececf0]/30 rounded-r-lg transition-colors"
-          title="Drag right edge to adjust duration"
-          onPointerDown={handlePointerDownResize}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
+          className={`w-0.5 rounded-full transition-all ${
+            isResizing
+              ? 'h-8 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]'
+              : 'h-4 bg-[#6b6c75] group-hover/resize:bg-[#ececf0] group-hover/resize:h-6'
+          }`}
         />
-      )}
+      </div>
     </div>
   );
 };
