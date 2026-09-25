@@ -26,6 +26,13 @@ export default function TimelineStudioPage() {
   const [preselectedParentId, setPreselectedParentId] = useState<string | null>(null);
   const [preselectedBranchNodeId, setPreselectedBranchNodeId] = useState<string | null>(null);
 
+  // Active highlighted timeline track state
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>('track-main');
+
+  const handleSelectTrack = (timelineId: string) => {
+    setSelectedTrackId(prev => prev === timelineId ? null : timelineId);
+  };
+
   const canvasRef = useRef<ChronoCanvasRef>(null);
 
   // Fetch data from SQLite API
@@ -339,6 +346,8 @@ export default function TimelineStudioPage() {
             setPreselectedBranchNodeId(null);
             setIsTimelineModalOpen(true);
           }}
+          selectedTrackId={selectedTrackId}
+          onSelectTrack={handleSelectTrack}
         />
 
         {/* Horizontal Resizable Splitter Handle */}

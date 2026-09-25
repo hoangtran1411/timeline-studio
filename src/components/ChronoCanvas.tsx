@@ -30,6 +30,8 @@ interface ChronoCanvasProps {
   onMoveNode: (nodeId: string, newStartDate: string, newEndDate: string | null) => Promise<void>;
   gridStyle?: 'notebook' | 'dots' | 'plain';
   onOpenAddTimeline?: () => void;
+  selectedTrackId?: string | null;
+  onSelectTrack?: (timelineId: string) => void;
 }
 
 export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
@@ -48,7 +50,9 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   onDeleteNode,
   onMoveNode,
   gridStyle = 'notebook',
-  onOpenAddTimeline
+  onOpenAddTimeline,
+  selectedTrackId,
+  onSelectTrack
 }, ref) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const leftDockScrollRef = useRef<HTMLDivElement>(null);
@@ -167,6 +171,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         getTrackHeight={getTrackHeight}
         scrollRef={leftDockScrollRef}
         onOpenAddTimeline={onOpenAddTimeline}
+        selectedTrackId={selectedTrackId}
+        onSelectTrack={onSelectTrack}
       />
 
       {/* Resizable Divider Splitter Handle */}
@@ -225,12 +231,14 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
             canvasWidth={canvasWidth}
             totalCanvasHeight={totalCanvasHeight}
             getTrackTopOffset={getTrackTopOffset}
+            selectedTrackId={selectedTrackId}
           />
 
           {/* Tracks Stack */}
           <div className="flex flex-col divide-y divide-[#222328]">
             {timelines.map((track) => {
               const trackHeight = getTrackHeight(track);
+              const isSelectedTrack = selectedTrackId === track.id;
 
               // Sort nodes chronologically for gap insertion calculation
               const sortedNodes = [...track.nodes].sort((a, b) => a.startDate.localeCompare(b.startDate));
@@ -243,7 +251,14 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                     minHeight: `${trackHeight}px`,
                     maxHeight: `${trackHeight}px`
                   }}
-                  className="relative group/track hover:bg-[#141519]/40 transition-colors flex-shrink-0 box-border overflow-visible"
+                  className={`relative group/track transition-all flex-shrink-0 box-border overflow-visible ${
+                    isSelectedTrack
+                      ? 'bg-[#15161c]/80 ring-1 ring-inset ring-[#ffffff]/25 shadow-inner'
+                      : selectedTrackId
+                      ? 'opacity-65 hover:opacity-95'
+                      : 'hover:bg-[#141519]/40'
+                  }`}
+                  onClick={() => onSelectTrack?.(track.id)}
                   onDoubleClick={(e) => handleTrackBackgroundClick(e, track.id)}
                 >
                   {/* Render Gap Inserters between adjacent nodes */}

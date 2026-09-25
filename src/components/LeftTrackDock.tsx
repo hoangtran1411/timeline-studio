@@ -13,6 +13,8 @@ interface LeftTrackDockProps {
   getTrackHeight: (track: TimelineTrack) => number;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   onOpenAddTimeline?: () => void;
+  selectedTrackId?: string | null;
+  onSelectTrack?: (timelineId: string) => void;
 }
 
 export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
@@ -23,7 +25,9 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
   onDeleteTrack,
   getTrackHeight,
   scrollRef,
-  onOpenAddTimeline
+  onOpenAddTimeline,
+  selectedTrackId,
+  onSelectTrack
 }) => {
   return (
     <div
@@ -54,15 +58,22 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
             ? timelines.find(t => t.id === track.parentTimelineId)
             : null;
 
+          const isSelected = selectedTrackId === track.id;
+
           return (
             <div
               key={track.id}
+              onClick={() => onSelectTrack?.(track.id)}
               style={{
                 height: `${height}px`,
                 minHeight: `${height}px`,
                 maxHeight: `${height}px`
               }}
-              className="p-3.5 bg-[#141519] hover:bg-[#18191e] transition-colors flex flex-col justify-between group relative flex-shrink-0 overflow-hidden box-border"
+              className={`p-3.5 transition-all flex flex-col justify-between group relative flex-shrink-0 overflow-hidden box-border cursor-pointer ${
+                isSelected
+                  ? 'bg-[#181920] border-l-[3px] border-l-[#ffffff] shadow-lg ring-1 ring-inset ring-[#383a42]/80'
+                  : 'bg-[#141519] hover:bg-[#18191e] border-l-[3px] border-l-transparent'
+              }`}
             >
               <div>
                 {/* Branch or Root Track indicator */}
@@ -75,8 +86,13 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
                       </span>
                     ) : (
                       <span className="text-[10px] font-mono text-[#71717a] flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ececf0] flex-shrink-0" />
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isSelected ? 'bg-white' : 'bg-[#ececf0]'}`} />
                         <span>Root Track</span>
+                      </span>
+                    )}
+                    {isSelected && (
+                      <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white text-black font-bold tracking-wider">
+                        ACTIVE
                       </span>
                     )}
                   </div>

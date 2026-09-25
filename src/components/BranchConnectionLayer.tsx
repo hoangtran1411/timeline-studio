@@ -12,6 +12,7 @@ interface BranchConnectionLayerProps {
   canvasWidth: number;
   totalCanvasHeight: number;
   getTrackTopOffset: (trackIndex: number) => number;
+  selectedTrackId?: string | null;
 }
 
 interface NodeCoords {
@@ -30,7 +31,8 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
   pxPerDay,
   canvasWidth,
   totalCanvasHeight,
-  getTrackTopOffset
+  getTrackTopOffset,
+  selectedTrackId
 }) => {
   // Helper to compute node bounding coordinates
   const computeNodeCoords = (node: TimelineNode, trackIndex: number): NodeCoords => {
@@ -262,6 +264,42 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     }
   });
 
+  // 4. Calculate continuous path along selected track for the traveling light beam
+  const selectedTrackPath = React.useMemo(() => {
+    if (!selectedTrackId) return null;
+    const track = timelines.find((t) => t.id === selectedTrackId);
+    if (!track) return null;
+
+    const sortedNodes = [...track.nodes].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    if (sortedNodes.length === 0) return null;
+
+    const coords = sortedNodes.map((n) => nodeMap.get(n.id)).filter(Boolean) as NodeCoords[];
+    if (coords.length === 0) return null;
+
+    const first = coords[0];
+    const startX = Math.max(32, first.leftX - 48);
+    let d = `M ${startX} ${first.centerY} L ${first.leftX} ${first.centerY}`;
+
+    for (let i = 0; i < coords.length; i++) {
+      const curr = coords[i];
+      d += ` L ${curr.rightX} ${curr.centerY}`;
+
+      if (i < coords.length - 1) {
+        const next = coords[i + 1];
+        if (curr.centerY === next.centerY) {
+          d += ` L ${next.leftX} ${next.centerY}`;
+        } else {
+          const midX = (curr.rightX + next.leftX) / 2;
+          d += ` C ${midX} ${curr.centerY}, ${midX} ${next.centerY}, ${next.leftX} ${next.centerY}`;
+        }
+      }
+    }
+
+    const last = coords[coords.length - 1];
+    d += ` L ${last.rightX + 80} ${last.centerY}`;
+    return d;
+  }, [selectedTrackId, timelines, nodeMap]);
+
   return (
     <svg
       style={{
@@ -339,6 +377,15 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         >
           <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ececf0" />
         </marker>
+
+        {/* Soft bloom glow for traveling light beam */}
+        <filter id="beam-glow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
       </defs>
 
       {/* 1. Underlying Track Rails (Spines) */}
@@ -464,6 +511,51 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
           <circle cx={dep.startX} cy={dep.startY} r="3.5" fill="#ececf0" />
         </g>
       ))}
+
+      {/* 7. Traveling Light Beam on Selected Track (Tia sáng di chuyển từ đầu đến cuối timeline) */}
+      {selectedTrackPath && (
+        <g key={`beam-${selectedTrackId}`} className="pointer-events-none">
+          {/* Luminous aura track pulse */}
+          <path
+            d={selectedTrackPath}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="4"
+            strokeOpacity="0.85"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter="url(#beam-glow)"
+            strokeDasharray="100 1400"
+            className="timeline-laser-tail"
+          />
+
+          {/* High-intensity crisp core laser beam */}
+          <path
+            d={selectedTrackPath}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray="60 1400"
+            className="timeline-laser-core"
+          />
+
+          {/* Traveling Spark / Photon Head that glides along the timeline */}
+          <g>
+            <animateMotion
+              path={selectedTrackPath}
+              dur="3.5s"
+              repeatCount="indefinite"
+            />
+            {/* Soft outer glow */}
+            <circle cx="0" cy="0" r="10" fill="#ffffff" opacity="0.25" filter="url(#beam-glow)" />
+            {/* Inner halo */}
+            <circle cx="0" cy="0" r="5" fill="#ececf0" opacity="0.75" />
+            {/* Bright spark center */}
+            <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+          </g>
+        </g>
+      )}
     </svg>
   );
 };

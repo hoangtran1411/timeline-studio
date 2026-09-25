@@ -109,6 +109,13 @@ linear-gradient(to bottom, rgba(236, 236, 240, 0.055) 1px, transparent 1px)
   - Double-click on divider toggles collapse / expand.
   - Internal table features independent vertical scrolling with sticky header rows.
 
+### 5.5 Track Focus & Timeline Light Beam (Tia Sáng Timeline)
+
+- **Track Selection**: Clicking any track card in the Left Track Dock or on the canvas sets it as the active focused timeline with a white indicator border.
+- **Spotlight Mode**: Non-focused tracks gently dim to 65% opacity to focus attention.
+- **Traveling Light Beam**: An illuminated monochrome photon pulse (`#ffffff`) glides smoothly from the first milestone to the final milestone along the exact connected timeline trajectory via SVG `<animateMotion>`.
+- **Laser Trailing Tail**: A luminous trailing stroke with soft bloom filter (`#beam-glow`) accompanies the spark head, reinforcing temporal directionality from past to future.
+
 ---
 
 ## 6. Implementation Guardrails

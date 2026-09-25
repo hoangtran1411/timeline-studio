@@ -58,3 +58,22 @@ body {
   background-image: radial-gradient(rgba(236, 236, 240, 0.12) 1.2px, transparent 1.2px);
   background-size: 24px 24px;
 }
+
+/* Luminous light beam animation along active timeline */
+@keyframes timelineLaserPulse {
+  0% {
+    stroke-dashoffset: 2000;
+  }
+  100% {
+    stroke-dashoffset: -2000;
+  }
+}
+
+.timeline-laser-tail {
+  animation: timelineLaserPulse 3.5s linear infinite;
+}
+
+.timeline-laser-core {
+  animation: timelineLaserPulse 3.5s linear infinite;
+}
+
