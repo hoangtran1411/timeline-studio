@@ -163,7 +163,7 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
 
   const currentWidth = Math.max(160, pixelWidth + (isResizing ? resizeDeltaW : 0));
   const effectiveLeft = pixelLeft + (isDragging ? dragDeltaX : 0);
-  const topOffset = 16 + lane * 84;
+  const topOffset = 16 + lane * 116;
 
   return (
     <div

@@ -28,6 +28,8 @@ interface ChronoCanvasProps {
   onDeleteTrack: (timelineId: string) => void;
   onDeleteNode: (nodeId: string) => void;
   onMoveNode: (nodeId: string, newStartDate: string, newEndDate: string | null) => Promise<void>;
+  gridStyle?: 'notebook' | 'dots' | 'plain';
+  onOpenAddTimeline?: () => void;
 }
 
 export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
@@ -44,7 +46,9 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   onBranchTrack,
   onDeleteTrack,
   onDeleteNode,
-  onMoveNode
+  onMoveNode,
+  gridStyle = 'notebook',
+  onOpenAddTimeline
 }, ref) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const leftDockScrollRef = useRef<HTMLDivElement>(null);
@@ -126,8 +130,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         maxLane = n.lane;
       }
     });
-    // 130px minimum for 1 lane, and +88px for each collision lane to ensure no overlap
-    return Math.max(130, (maxLane + 1) * 88 + 24);
+    // 148px minimum for 1 lane, and +116px for each collision lane so cards and bottom tags never get cut off
+    return Math.max(148, 148 + maxLane * 116);
   };
 
   const getTrackTopOffset = (trackIndex: number): number => {
@@ -162,6 +166,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         onDeleteTrack={onDeleteTrack}
         getTrackHeight={getTrackHeight}
         scrollRef={leftDockScrollRef}
+        onOpenAddTimeline={onOpenAddTimeline}
       />
 
       {/* Resizable Divider Splitter Handle */}
@@ -183,15 +188,25 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         </div>
       </div>
 
-      {/* Right Scrollable Canvas */}
+      {/* Right Scrollable Canvas with Full-Coverage Background Grid */}
       <div
         ref={scrollContainerRef}
         onScroll={handleCanvasScroll}
-        className="flex-1 overflow-x-auto overflow-y-auto relative timeline-scrollbar bg-[#121316]/50"
+        className={`flex-1 overflow-x-auto overflow-y-auto relative timeline-scrollbar ${
+          gridStyle === 'notebook'
+            ? 'notebook-grid'
+            : gridStyle === 'dots'
+            ? 'notebook-dot-grid'
+            : 'bg-[#111215]'
+        }`}
       >
         <div
-          style={{ width: `${canvasWidth}px`, minHeight: `${totalCanvasHeight}px` }}
-          className="relative"
+          style={{
+            width: `${canvasWidth}px`,
+            minWidth: '100%',
+            minHeight: '100%'
+          }}
+          className="relative min-w-full min-h-full flex flex-col"
         >
           {/* Top Sticky Time Ruler */}
           <ChronoRuler
@@ -228,12 +243,9 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                     minHeight: `${trackHeight}px`,
                     maxHeight: `${trackHeight}px`
                   }}
-                  className="relative group/track hover:bg-[#141519]/40 transition-colors flex-shrink-0 box-border overflow-hidden"
+                  className="relative group/track hover:bg-[#141519]/40 transition-colors flex-shrink-0 box-border overflow-visible"
                   onDoubleClick={(e) => handleTrackBackgroundClick(e, track.id)}
                 >
-                  {/* Subtle horizontal guideline center */}
-                  <div className="absolute left-0 right-0 top-1/2 h-px bg-[#222328]/60 pointer-events-none" />
-
                   {/* Render Gap Inserters between adjacent nodes */}
                   {sortedNodes.map((currNode, idx) => {
                     if (idx === sortedNodes.length - 1) return null;
@@ -291,6 +303,26 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                 </div>
               );
             })}
+          </div>
+
+          {/* Empty Canvas Area below tracks filling remaining vertical viewport */}
+          <div
+            className="flex-1 min-h-[160px] cursor-pointer group/empty flex items-start justify-center pt-8"
+            onDoubleClick={(e) => {
+              if (timelines.length > 0) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickedDate = pixelXToDate(clickX, originDate, pxPerDay);
+                onAddNodeToTrack(timelines[0].id, clickedDate);
+              } else if (onOpenAddTimeline) {
+                onOpenAddTimeline();
+              }
+            }}
+            title="Double-click empty grid to add a milestone"
+          >
+            <div className="opacity-0 group-hover/empty:opacity-100 transition-opacity px-4 py-2 rounded border border-dashed border-[#2a2b32] bg-[#141519]/80 text-[#71717a] text-xs font-mono flex items-center gap-2 pointer-events-none">
+              <span>+ Double-click to add milestone to canvas</span>
+            </div>
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ interface LeftTrackDockProps {
   onDeleteTrack: (timelineId: string) => void;
   getTrackHeight: (track: TimelineTrack) => number;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
+  onOpenAddTimeline?: () => void;
 }
 
 export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
@@ -21,7 +22,8 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
   onBranchTrack,
   onDeleteTrack,
   getTrackHeight,
-  scrollRef
+  scrollRef,
+  onOpenAddTimeline
 }) => {
   return (
     <div
@@ -137,6 +139,19 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
             </div>
           );
         })}
+
+        {/* Add Track Action Button in dock */}
+        {onOpenAddTimeline && (
+          <div className="p-3">
+            <button
+              onClick={onOpenAddTimeline}
+              className="w-full py-2.5 px-3 rounded border border-dashed border-[#262832] hover:border-[#383a42] bg-[#141519]/60 hover:bg-[#18191e] text-[#9e9ea7] hover:text-[#ececf0] text-xs font-mono flex items-center justify-center gap-1.5 transition-all group"
+            >
+              <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              <span>Add New Track</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

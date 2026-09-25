@@ -261,6 +261,28 @@ export default function TimelineStudioPage() {
     });
   };
 
+  // Canvas grid style state (notebook paper / dot grid / plain)
+  const [gridStyle, setGridStyle] = useState<'notebook' | 'dots' | 'plain'>('notebook');
+
+  useEffect(() => {
+    try {
+      const savedGrid = localStorage.getItem('timeline_studio_grid_style');
+      if (savedGrid === 'notebook' || savedGrid === 'dots' || savedGrid === 'plain') {
+        setGridStyle(savedGrid);
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleToggleGrid = () => {
+    setGridStyle(prev => {
+      const next = prev === 'notebook' ? 'dots' : prev === 'dots' ? 'plain' : 'notebook';
+      try {
+        localStorage.setItem('timeline_studio_grid_style', next);
+      } catch (_) {}
+      return next;
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#101114] flex items-center justify-center font-mono text-xs text-[#9e9ea7]">
@@ -286,10 +308,12 @@ export default function TimelineStudioPage() {
         onOpenAddNode={() => handleOpenAddNode()}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        gridStyle={gridStyle}
+        onToggleGrid={handleToggleGrid}
       />
 
       {/* Main Interactive Canvas & Bottom Panel Container */}
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#101114]">
         <ChronoCanvas
           ref={canvasRef}
           timelines={filteredTimelines}
@@ -309,6 +333,12 @@ export default function TimelineStudioPage() {
           onDeleteTrack={handleDeleteTrack}
           onDeleteNode={handleDeleteNode}
           onMoveNode={handleMoveNode}
+          gridStyle={gridStyle}
+          onOpenAddTimeline={() => {
+            setPreselectedParentId(null);
+            setPreselectedBranchNodeId(null);
+            setIsTimelineModalOpen(true);
+          }}
         />
 
         {/* Horizontal Resizable Splitter Handle */}

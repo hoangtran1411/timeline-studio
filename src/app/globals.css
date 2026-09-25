@@ -36,3 +36,25 @@ body {
 .timeline-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #3e404b;
 }
+
+/* Notebook Paper Graph Grid (Kẻ ô vở ô ly) */
+.notebook-grid {
+  background-color: #111215;
+  background-attachment: local;
+  background-image:
+    /* Major grid lines (every 120px = 5 squares) */
+    linear-gradient(to right, rgba(236, 236, 240, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(236, 236, 240, 0.055) 1px, transparent 1px),
+    /* Minor grid lines (every 24px - quad notebook paper) */
+    linear-gradient(to right, rgba(236, 236, 240, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(236, 236, 240, 0.025) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+}
+
+/* Notebook Dot Grid Style (Sổ tay chấm bi) */
+.notebook-dot-grid {
+  background-color: #111215;
+  background-attachment: local;
+  background-image: radial-gradient(rgba(236, 236, 240, 0.12) 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}

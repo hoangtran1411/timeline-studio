@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Plus, GitFork, Calendar, Search, ZoomIn, ZoomOut, RotateCcw, Database } from 'lucide-react';
+import { Plus, GitFork, Calendar, Search, ZoomIn, ZoomOut, Database, Grid3X3 } from 'lucide-react';
 
 interface HeaderProps {
   timelineCount: number;
@@ -13,6 +13,8 @@ interface HeaderProps {
   onOpenAddNode: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  gridStyle: 'notebook' | 'dots' | 'plain';
+  onToggleGrid: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -24,7 +26,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAddTimeline,
   onOpenAddNode,
   searchQuery,
-  onSearchChange
+  onSearchChange,
+  gridStyle,
+  onToggleGrid
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#222328] bg-[#121316]/95 backdrop-blur px-5 py-2.5 flex flex-col gap-2">
@@ -92,6 +96,20 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Calendar className="w-3.5 h-3.5" />
             <span>Today</span>
+          </button>
+
+          {/* Notebook Grid Style Toggle */}
+          <button
+            onClick={onToggleGrid}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors font-mono ${
+              gridStyle !== 'plain'
+                ? 'border-[#383a42] bg-[#1c1d22] text-[#ececf0]'
+                : 'border-[#222328] bg-[#16171b] text-[#9e9ea7] hover:text-[#ececf0]'
+            }`}
+            title={`Canvas Grid Style: ${gridStyle === 'notebook' ? 'Notebook Graph Paper (Kẻ ô vở)' : gridStyle === 'dots' ? 'Dot Grid' : 'Plain'} (Click to toggle)`}
+          >
+            <Grid3X3 className="w-3.5 h-3.5 text-[#9e9ea7]" />
+            <span className="capitalize">{gridStyle === 'notebook' ? 'Notebook' : gridStyle}</span>
           </button>
 
           <div className="h-4 w-px bg-[#222328]" />
