@@ -57,6 +57,9 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const leftDockScrollRef = useRef<HTMLDivElement>(null);
 
+  // Hovered track state for synchronized highlight across canvas and SVG wire layer
+  const [hoveredTrackId, setHoveredTrackId] = useState<string | null>(null);
+
   // Resizable sidebar dock state
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
@@ -233,6 +236,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
             totalCanvasHeight={totalCanvasHeight}
             getTrackTopOffset={getTrackTopOffset}
             selectedTrackId={selectedTrackId}
+            hoveredTrackId={hoveredTrackId}
+            selectedNodeId={selectedNode?.id || null}
           />
 
           {/* Tracks Stack */}
@@ -240,6 +245,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
             {timelines.map((track) => {
               const trackHeight = getTrackHeight(track);
               const isSelectedTrack = selectedTrackId === track.id;
+              const isHoveredTrack = hoveredTrackId === track.id;
 
               // Sort nodes chronologically for gap insertion calculation
               const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
@@ -252,18 +258,22 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                     minHeight: `${trackHeight}px`,
                     maxHeight: `${trackHeight}px`
                   }}
-                  className={`relative group/track transition-all flex-shrink-0 box-border overflow-visible border-b border-[#222328] ${
+                  className={`relative group/track transition-all duration-200 flex-shrink-0 box-border overflow-visible border-b border-[#222328] ${
                     isSelectedTrack
-                      ? 'bg-[#15161c]/80 ring-1 ring-inset ring-[#ffffff]/25 shadow-inner'
+                      ? 'bg-[#15161c]/80 ring-1 ring-inset ring-[#ffffff]/25 shadow-inner opacity-100'
                       : selectedTrackId
-                      ? 'opacity-65 hover:opacity-95'
-                      : 'hover:bg-[#141519]/40'
+                      ? isHoveredTrack
+                        ? 'bg-[#141519]/70 opacity-85'
+                        : 'opacity-35'
+                      : 'hover:bg-[#141519]/40 opacity-100'
                   }`}
                   onClick={() => onSelectTrack?.(track.id)}
                   onDoubleClick={(e) => handleTrackBackgroundClick(e, track.id)}
+                  onMouseEnter={() => setHoveredTrackId(track.id)}
+                  onMouseLeave={() => setHoveredTrackId(null)}
                 >
-                  {/* Render Gap Inserters between adjacent nodes */}
-                  {sortedNodes.map((currNode, idx) => {
+                  {/* Render Gap Inserters between adjacent nodes (active tracks only) */}
+                  {(!selectedTrackId || isSelectedTrack) && sortedNodes.map((currNode, idx) => {
                     if (idx === sortedNodes.length - 1) return null;
                     const nextNode = sortedNodes[idx + 1];
 

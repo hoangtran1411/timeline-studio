@@ -222,14 +222,14 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
           )}
         </div>
 
-        {/* Vertical Hanger / Hook Stem */}
+        {/* Vertical Hanger / Hook Stem (Dotted connector line from knot to card) */}
         <div
-          className={`w-0.5 flex-1 transition-colors ${
+          className={`w-0 flex-1 border-l border-dashed transition-colors ${
             node.status === 'completed'
-              ? 'bg-[#ececf0]/75'
+              ? 'border-[#ececf0]/75'
               : node.status === 'in_progress'
-              ? 'bg-white/60'
-              : 'bg-[#3e404b]'
+              ? 'border-white/60'
+              : 'border-[#52525b]'
           }`}
         />
 

@@ -13,6 +13,8 @@ interface BranchConnectionLayerProps {
   totalCanvasHeight: number;
   getTrackTopOffset: (trackIndex: number) => number;
   selectedTrackId?: string | null;
+  hoveredTrackId?: string | null;
+  selectedNodeId?: string | null;
 }
 
 interface NodeCoords {
@@ -36,7 +38,9 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
   canvasWidth,
   totalCanvasHeight,
   getTrackTopOffset,
-  selectedTrackId
+  selectedTrackId,
+  hoveredTrackId,
+  selectedNodeId
 }) => {
   // Helper to compute node bounding coordinates and knot position on the clothesline
   const computeNodeCoords = (node: TimelineNode, trackIndex: number): NodeCoords => {
@@ -78,94 +82,82 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     });
   });
 
-  // 1. Generate horizontal clothesline wires and tension anchors for each track
-  const clotheslineWires: Array<{
-    trackId: string;
-    wireY: number;
-    startX: number;
-    endX: number;
-  }> = [];
-
-  const leadInWires: Array<{
-    startX: number;
-    endX: number;
-    wireY: number;
-    status: string;
-  }> = [];
-
-  const knotWireSegments: Array<{
-    id: string;
-    startX: number;
-    endX: number;
-    wireY: number;
-    status: string;
-  }> = [];
-
-  const futureWires: Array<{
-    startX: number;
-    endX: number;
-    wireY: number;
-  }> = [];
-
-  timelines.forEach((track, trackIndex) => {
+  // 1. Generate structured clothesline wires for each track
+  const trackWires = timelines.map((track, trackIndex) => {
     const trackTop = getTrackTopOffset(trackIndex);
     const wireY = trackTop + 28;
     const startX = 24;
     const endX = Math.max(canvasWidth - 32, 1200);
 
-    // Continuous clothesline wire running across track
-    clotheslineWires.push({
+    const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
+
+    let leadIn: { startX: number; endX: number; status: string } | null = null;
+    const segments: Array<{
+      id: string;
+      startX: number;
+      endX: number;
+      wireY: number;
+      status: string;
+    }> = [];
+    let futureWire: { startX: number; endX: number; wireY: number } | null = null;
+
+    if (sortedNodes.length > 0) {
+      const firstCoords = nodeMap.get(sortedNodes[0].id);
+      if (firstCoords) {
+        // Approach the left boundary of the first knot (-11px)
+        leadIn = {
+          startX: Math.max(24, firstCoords.knotX - 48),
+          endX: firstCoords.knotX - 11,
+          status: firstCoords.node.status
+        };
+      }
+
+      for (let i = 0; i < sortedNodes.length - 1; i++) {
+        const curr = nodeMap.get(sortedNodes[i].id);
+        const next = nodeMap.get(sortedNodes[i + 1].id);
+        if (curr && next) {
+          // Wire starts at the right perimeter of curr knot (+11px) and stops at left perimeter of next knot (-11px)
+          const segStartX = curr.knotX + 11;
+          const segEndX = next.knotX - 11;
+          if (segEndX > segStartX) {
+            segments.push({
+              id: `wire-segment-${curr.node.id}-${next.node.id}`,
+              startX: segStartX,
+              endX: segEndX,
+              wireY,
+              status: curr.node.status
+            });
+          }
+        }
+      }
+
+      const lastCoords = nodeMap.get(sortedNodes[sortedNodes.length - 1].id);
+      if (lastCoords) {
+        // Emerges from the right perimeter of the last knot (+11px)
+        futureWire = {
+          startX: lastCoords.knotX + 11,
+          endX: lastCoords.knotX + 64,
+          wireY
+        };
+      }
+    }
+
+    return {
       trackId: track.id,
       wireY,
       startX,
-      endX
-    });
-
-    // Sort nodes on this track chronologically
-    const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
-    if (sortedNodes.length === 0) return;
-
-    // Lead-in wire before the first milestone knot
-    const firstCoords = nodeMap.get(sortedNodes[0].id);
-    if (firstCoords) {
-      const leadStartX = Math.max(24, firstCoords.knotX - 48);
-      leadInWires.push({
-        startX: leadStartX,
-        endX: firstCoords.knotX,
-        wireY,
-        status: firstCoords.node.status
-      });
-    }
-
-    // Connect sequential milestone knots strictly from LEFT to RIGHT along the wire
-    for (let i = 0; i < sortedNodes.length - 1; i++) {
-      const curr = nodeMap.get(sortedNodes[i].id);
-      const next = nodeMap.get(sortedNodes[i + 1].id);
-      if (!curr || !next) continue;
-
-      knotWireSegments.push({
-        id: `wire-segment-${curr.node.id}-${next.node.id}`,
-        startX: curr.knotX,
-        endX: next.knotX,
-        wireY,
-        status: curr.node.status
-      });
-    }
-
-    // Future continuation wire with forward arrow after the last milestone knot
-    const lastCoords = nodeMap.get(sortedNodes[sortedNodes.length - 1].id);
-    if (lastCoords) {
-      futureWires.push({
-        startX: lastCoords.knotX,
-        endX: lastCoords.knotX + 64,
-        wireY
-      });
-    }
+      endX,
+      leadIn,
+      segments,
+      futureWire
+    };
   });
 
   // 2. Calculate branch offshoots flowing forward and down from parent knot to child wire
   const branchLines: Array<{
     id: string;
+    trackId: string;
+    parentTrackId: string;
     path: string;
     startX: number;
     startY: number;
@@ -178,22 +170,25 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     if (track.parentTimelineId && track.branchPointNodeId) {
       const parentCoords = nodeMap.get(track.branchPointNodeId);
       if (parentCoords) {
-        // Branch emerges from the parent knot peg on the clothesline
-        const startX = parentCoords.knotX;
-        const startY = parentCoords.knotY;
+        // Branch emerges cleanly from the outer perimeter of the parent knot (lower-right tangent)
+        // Parent knot center is (parentCoords.knotX, parentCoords.knotY). Leaves at +9px, +7px
+        const startX = parentCoords.knotX + 9;
+        const startY = parentCoords.knotY + 7;
 
         const childTrackTop = getTrackTopOffset(trackIndex);
         const childWireY = childTrackTop + 28;
 
         // Find child's first node or default landing point
         const childSortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
-        let endX = startX + 64;
-        const endY = childWireY;
+        let endX = parentCoords.knotX + 64;
+        let endY = childWireY;
 
         if (childSortedNodes.length > 0) {
           const firstChildCoords = nodeMap.get(childSortedNodes[0].id);
           if (firstChildCoords) {
-            endX = Math.max(startX + 48, firstChildCoords.knotX);
+            // Target the approach boundary of the child knot (stops ~14px before center, touching the left boundary with arrow)
+            endX = Math.max(startX + 48, firstChildCoords.knotX - 14);
+            endY = firstChildCoords.knotY;
           }
         }
 
@@ -208,6 +203,8 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
 
         branchLines.push({
           id: `branch-${track.id}`,
+          trackId: track.id,
+          parentTrackId: track.parentTimelineId,
           path,
           startX,
           startY,
@@ -219,9 +216,13 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     }
   });
 
-  // 3. Calculate dependencies between knots
+  // 3. Calculate dependencies between knots (approaching knot perimeters cleanly without cutting through)
   const depLines: Array<{
     id: string;
+    fromTrackId: string;
+    toTrackId: string;
+    fromNodeId: string;
+    toNodeId: string;
     path: string;
     startX: number;
     startY: number;
@@ -235,19 +236,44 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     const toInfo = nodeMap.get(dep.toNodeId);
 
     if (fromInfo && toInfo) {
-      const startX = fromInfo.knotX;
-      const startY = fromInfo.knotY;
-      const endX = toInfo.knotX;
-      const endY = toInfo.knotY;
+      const fromCenter = { x: fromInfo.knotX, y: fromInfo.knotY };
+      const toCenter = { x: toInfo.knotX, y: toInfo.knotY };
 
+      let startX: number;
+      let startY: number;
+      let endX: number;
+      let endY: number;
       let path = '';
-      if (startY === endY) {
+
+      if (fromCenter.y === toCenter.y) {
         // Same track dependency: gentle upward arched curve over the clothesline wire
+        // Leaves top-right of from-knot (+8, -7), approaches top-left of to-knot (-14, -7)
+        startX = fromCenter.x + 8;
+        startY = fromCenter.y - 7;
+        endX = toCenter.x - 14;
+        endY = toCenter.y - 7;
+
         const midX = (startX + endX) / 2;
-        const archY = startY - Math.min(28, Math.max(14, Math.abs(endX - startX) * 0.12));
+        const archY = fromCenter.y - Math.min(32, Math.max(16, Math.abs(endX - startX) * 0.12));
         path = `M ${startX} ${startY} Q ${midX} ${archY}, ${endX} ${endY}`;
+      } else if (fromCenter.y < toCenter.y) {
+        // Cross-track dependency going DOWN: leaves bottom-right of from-knot, approaches top-left of to-knot
+        startX = fromCenter.x + 9;
+        startY = fromCenter.y + 7;
+        endX = toCenter.x - 14;
+        endY = toCenter.y - 6;
+
+        const deltaX = Math.max(36, Math.abs(endX - startX));
+        const cp1x = startX + deltaX * 0.4;
+        const cp2x = endX - deltaX * 0.4;
+        path = `M ${startX} ${startY} C ${cp1x} ${startY}, ${cp2x} ${endY}, ${endX} ${endY}`;
       } else {
-        // Cross-track dependency: smooth cubic bezier forward and up/down
+        // Cross-track dependency going UP: leaves top-right of from-knot, approaches bottom-left of to-knot
+        startX = fromCenter.x + 9;
+        startY = fromCenter.y - 7;
+        endX = toCenter.x - 14;
+        endY = toCenter.y + 6;
+
         const deltaX = Math.max(36, Math.abs(endX - startX));
         const cp1x = startX + deltaX * 0.4;
         const cp2x = endX - deltaX * 0.4;
@@ -256,6 +282,10 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
 
       depLines.push({
         id: dep.id,
+        fromTrackId: fromInfo.node.timelineId,
+        toTrackId: toInfo.node.timelineId,
+        fromNodeId: dep.fromNodeId,
+        toNodeId: dep.toNodeId,
         path,
         startX,
         startY,
@@ -335,7 +365,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
           markerHeight="6"
           orient="auto"
         >
-          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ececf0" />
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="currentColor" />
         </marker>
 
         {/* Soft bloom glow for traveling light beam */}
@@ -348,170 +378,231 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         </filter>
       </defs>
 
-      {/* 1. Underlying Continuous Clothesline Wires across each track */}
-      {clotheslineWires.map((wire) => (
-        <g key={wire.trackId}>
-          {/* Subtle background taut wire */}
-          <line
-            x1={wire.startX}
-            y1={wire.wireY}
-            x2={wire.endX}
-            y2={wire.wireY}
-            stroke="#262731"
-            strokeWidth="1.5"
-          />
-
-          {/* Left Wall Hook / Tension Eyelet */}
-          <g>
-            <circle cx={wire.startX} cy={wire.wireY} r="4.5" fill="#181920" stroke="#454754" strokeWidth="1.5" />
-            <circle cx={wire.startX} cy={wire.wireY} r="1.5" fill="#ececf0" />
-          </g>
-
-          {/* Right End Tension Bracket */}
-          <g>
-            <rect
-              x={wire.endX - 7}
-              y={wire.wireY - 3}
-              width="7"
-              height="6"
-              rx="1"
-              fill="#181920"
-              stroke="#454754"
-              strokeWidth="1"
-            />
-            <line
-              x1={wire.endX}
-              y1={wire.wireY - 4.5}
-              x2={wire.endX}
-              y2={wire.wireY + 4.5}
-              stroke="#52525b"
-              strokeWidth="1.5"
-            />
-          </g>
-        </g>
-      ))}
-
-      {/* 2. Lead-In Wires entering first milestone on each track */}
-      {leadInWires.map((lead, idx) => (
-        <line
-          key={`leadin-${idx}`}
-          x1={lead.startX}
-          y1={lead.wireY}
-          x2={lead.endX}
-          y2={lead.wireY}
-          stroke="#383a45"
-          strokeWidth="1.5"
-          strokeDasharray="4 3"
-        />
-      ))}
-
-      {/* 3. Active Clothesline Wire Segments between Knots */}
-      {knotWireSegments.map((seg) => {
-        const isCompleted = seg.status === 'completed';
-        const isInProgress = seg.status === 'in_progress';
-        const midX = (seg.startX + seg.endX) / 2;
-        const segColor = isCompleted ? '#ececf0' : isInProgress ? '#9e9ea7' : '#454754';
+      {/* 1. Track Clothesline Wires per Track (Synchronized Opacity with Knots & Cards) */}
+      {trackWires.map((tw) => {
+        const isSelected = selectedTrackId === tw.trackId;
+        const isHovered = hoveredTrackId === tw.trackId;
+        const isDimmed = !!selectedTrackId && !isSelected;
+        const trackOpacity = isSelected ? 1 : isHovered ? 0.85 : isDimmed ? 0.35 : 1;
 
         return (
-          <g key={seg.id}>
-            {/* Contrast shadow behind wire */}
+          <g
+            key={`track-wire-${tw.trackId}`}
+            style={{ opacity: trackOpacity }}
+            className="transition-opacity duration-200"
+          >
+            {/* Subtle background taut wire */}
             <line
-              x1={seg.startX}
-              y1={seg.wireY}
-              x2={seg.endX}
-              y2={seg.wireY}
-              stroke="#101114"
-              strokeWidth="3.5"
+              x1={tw.startX}
+              y1={tw.wireY}
+              x2={tw.endX}
+              y2={tw.wireY}
+              stroke="#262731"
+              strokeWidth="1.5"
             />
-            {/* Illuminated / active taut wire running cleanly between knots */}
-            <line
-              x1={seg.startX}
-              y1={seg.wireY}
-              x2={seg.endX}
-              y2={seg.wireY}
-              stroke={segColor}
-              strokeWidth={isCompleted ? '2' : '1.5'}
-              strokeDasharray={isCompleted ? undefined : isInProgress ? '5 3' : '4 4'}
-            />
-            {/* Mid-span subtle flow chevron (direction indicator without poking into knot) */}
-            {seg.endX - seg.startX >= 36 && (
-              <path
-                d={`M ${midX - 3} ${seg.wireY - 3.5} L ${midX + 2} ${seg.wireY} L ${midX - 3} ${seg.wireY + 3.5}`}
-                fill="none"
-                stroke={segColor}
+
+            {/* Left Wall Hook / Tension Eyelet */}
+            <g>
+              <circle cx={tw.startX} cy={tw.wireY} r="4.5" fill="#181920" stroke="#454754" strokeWidth="1.5" />
+              <circle cx={tw.startX} cy={tw.wireY} r="1.5" fill="#ececf0" />
+            </g>
+
+            {/* Right End Tension Bracket */}
+            <g>
+              <rect
+                x={tw.endX - 7}
+                y={tw.wireY - 3}
+                width="7"
+                height="6"
+                rx="1"
+                fill="#181920"
+                stroke="#454754"
+                strokeWidth="1"
+              />
+              <line
+                x1={tw.endX}
+                y1={tw.wireY - 4.5}
+                x2={tw.endX}
+                y2={tw.wireY + 4.5}
+                stroke="#52525b"
                 strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              />
+            </g>
+
+            {/* Lead-In Wire */}
+            {tw.leadIn && (
+              <line
+                x1={tw.leadIn.startX}
+                y1={tw.wireY}
+                x2={tw.leadIn.endX}
+                y2={tw.wireY}
+                stroke="#383a45"
+                strokeWidth="1.5"
+                strokeDasharray="4 3"
+              />
+            )}
+
+            {/* Sequential Active Segments between Knots */}
+            {tw.segments.map((seg) => {
+              const isCompleted = seg.status === 'completed';
+              const isInProgress = seg.status === 'in_progress';
+              const midX = (seg.startX + seg.endX) / 2;
+              const segColor = isCompleted ? '#ececf0' : isInProgress ? '#9e9ea7' : '#454754';
+
+              return (
+                <g key={seg.id}>
+                  {/* Contrast shadow behind wire */}
+                  <line
+                    x1={seg.startX}
+                    y1={seg.wireY}
+                    x2={seg.endX}
+                    y2={seg.wireY}
+                    stroke="#101114"
+                    strokeWidth="3.5"
+                  />
+                  {/* Active taut wire running cleanly between knots */}
+                  <line
+                    x1={seg.startX}
+                    y1={seg.wireY}
+                    x2={seg.endX}
+                    y2={seg.wireY}
+                    stroke={segColor}
+                    strokeWidth={isCompleted ? '2' : '1.5'}
+                    strokeDasharray={isCompleted ? undefined : isInProgress ? '5 3' : '4 4'}
+                  />
+                  {/* Mid-span flow chevron */}
+                  {seg.endX - seg.startX >= 36 && (
+                    <path
+                      d={`M ${midX - 3} ${seg.wireY - 3.5} L ${midX + 2} ${seg.wireY} L ${midX - 3} ${seg.wireY + 3.5}`}
+                      fill="none"
+                      stroke={segColor}
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Future Continuation Wire */}
+            {tw.futureWire && (
+              <line
+                x1={tw.futureWire.startX}
+                y1={tw.wireY}
+                x2={tw.futureWire.endX}
+                y2={tw.wireY}
+                stroke="#3f3f46"
+                strokeWidth="1.5"
+                strokeDasharray="4 4"
+                markerEnd="url(#future-arrow)"
               />
             )}
           </g>
         );
       })}
 
-      {/* 4. Future Trajectory Wires (continuing past the last knot) */}
-      {futureWires.map((fw, idx) => (
-        <line
-          key={`future-${idx}`}
-          x1={fw.startX}
-          y1={fw.wireY}
-          x2={fw.endX}
-          y2={fw.wireY}
-          stroke="#3f3f46"
-          strokeWidth="1.5"
-          strokeDasharray="4 4"
-          markerEnd="url(#future-arrow)"
-        />
-      ))}
+      {/* 2. Branch Offshoots (Dropping gracefully from parent knot to child wire) */}
+      {branchLines.map((branch) => {
+        const isRelated = !selectedTrackId ||
+          branch.trackId === selectedTrackId ||
+          branch.parentTrackId === selectedTrackId;
+        const isHovered = hoveredTrackId === branch.trackId || hoveredTrackId === branch.parentTrackId;
+        const branchOpacity = isRelated ? 1 : isHovered ? 0.85 : 0.25;
 
-      {/* 5. Branch Offshoots (Dropping gracefully from parent knot to child wire) */}
-      {branchLines.map((branch) => (
-        <g key={branch.id}>
-          {/* Branch curve with smooth left-to-right flow */}
-          <path
-            d={branch.path}
-            fill="none"
-            stroke="#71717a"
-            strokeWidth="2"
-            strokeDasharray="6 4"
-            markerEnd="url(#branch-arrow)"
-          />
-          {/* Branch indicator pill */}
-          <rect
-            x={branch.startX + 18}
-            y={(branch.startY + branch.endY) / 2 - 9}
-            width="82"
-            height="18"
-            rx="4"
-            fill="#18191e"
-            stroke="#2a2b32"
-            strokeWidth="1"
-          />
-          <text
-            x={branch.startX + 59}
-            y={(branch.startY + branch.endY) / 2 + 3}
-            textAnchor="middle"
-            fill="#9e9ea7"
-            fontSize="9"
-            fontFamily="monospace"
+        return (
+          <g key={branch.id} style={{ opacity: branchOpacity }} className="transition-opacity duration-200">
+            {/* Branch curve with smooth left-to-right flow */}
+            <path
+              d={branch.path}
+              fill="none"
+              stroke={isRelated && selectedTrackId ? '#ececf0' : '#71717a'}
+              strokeWidth={isRelated && selectedTrackId ? '2.5' : '2'}
+              strokeDasharray="6 4"
+              markerEnd="url(#branch-arrow)"
+            />
+            {/* Branch indicator pill */}
+            <rect
+              x={branch.startX + 18}
+              y={(branch.startY + branch.endY) / 2 - 9}
+              width="82"
+              height="18"
+              rx="4"
+              fill="#18191e"
+              stroke={isRelated && selectedTrackId ? '#52525b' : '#2a2b32'}
+              strokeWidth="1"
+            />
+            <text
+              x={branch.startX + 59}
+              y={(branch.startY + branch.endY) / 2 + 3}
+              textAnchor="middle"
+              fill={isRelated && selectedTrackId ? '#ececf0' : '#9e9ea7'}
+              fontSize="9"
+              fontFamily="monospace"
+            >
+              ⑂ {branch.label.length > 9 ? branch.label.slice(0, 9) + '…' : branch.label}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* 3. Inter-Node Dependencies between Knots (Synchronized Opacity) */}
+      {depLines.map((dep) => {
+        const isFromSelected = dep.fromTrackId === selectedTrackId;
+        const isToSelected = dep.toTrackId === selectedTrackId;
+        const isBothSelected = isFromSelected && isToSelected;
+        const isOneSelected = isFromSelected || isToSelected;
+        const isNodeConnected = !!selectedNodeId && (dep.fromNodeId === selectedNodeId || dep.toNodeId === selectedNodeId);
+        const isHovered = hoveredTrackId === dep.fromTrackId || hoveredTrackId === dep.toTrackId;
+
+        let depOpacity = 0.45; // default ambient
+        let strokeColor = '#71717a';
+        let strokeWidth = '1.5';
+
+        if (isNodeConnected) {
+          // Explicitly focused node dependency
+          depOpacity = 1;
+          strokeColor = '#ffffff';
+          strokeWidth = '2';
+        } else if (selectedTrackId) {
+          if (isBothSelected) {
+            // Internal to the selected track
+            depOpacity = 0.9;
+            strokeColor = '#ececf0';
+            strokeWidth = '1.8';
+          } else if (isOneSelected) {
+            // Crosses to an UNSELECTED track! Dimmed synchronously with the unselected track
+            depOpacity = isHovered ? 0.7 : 0.3;
+            strokeColor = isHovered ? '#9e9ea7' : '#52525b';
+            strokeWidth = '1.2';
+          } else {
+            // Unrelated tracks entirely
+            depOpacity = 0.12;
+            strokeColor = '#3f3f46';
+            strokeWidth = '1';
+          }
+        } else if (isHovered) {
+          depOpacity = 0.85;
+          strokeColor = '#9e9ea7';
+        }
+
+        return (
+          <g
+            key={dep.id}
+            style={{ opacity: depOpacity, color: strokeColor }}
+            className="transition-opacity duration-200"
           >
-            ⑂ {branch.label.length > 9 ? branch.label.slice(0, 9) + '…' : branch.label}
-          </text>
-        </g>
-      ))}
-
-      {/* 6. Inter-Node Dependencies between Knots */}
-      {depLines.map((dep) => (
-        <g key={dep.id}>
-          <path
-            d={dep.path}
-            fill="none"
-            stroke="#a1a1aa"
-            strokeWidth="1.5"
-            strokeDasharray="4 3"
-            markerEnd="url(#dep-arrow)"
-          />
-        </g>
-      ))}
+            <path
+              d={dep.path}
+              fill="none"
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray="4 3"
+              markerEnd="url(#dep-arrow)"
+            />
+          </g>
+        );
+      })}
 
       {/* 7. Traveling Light Beam on Selected Track (Tia sáng di chuyển dọc sợi dây clothesline qua các nút) */}
       {selectedTrackPath && (
