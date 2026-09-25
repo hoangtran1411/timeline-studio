@@ -107,12 +107,6 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     wireY: number;
   }> = [];
 
-  const knotClampBackings: Array<{
-    x: number;
-    y: number;
-    status: string;
-  }> = [];
-
   timelines.forEach((track, trackIndex) => {
     const trackTop = getTrackTopOffset(trackIndex);
     const wireY = trackTop + 28;
@@ -130,18 +124,6 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     // Sort nodes on this track chronologically
     const sortedNodes = [...track.nodes].sort((a, b) => a.startDate.localeCompare(b.startDate));
     if (sortedNodes.length === 0) return;
-
-    // Register under-knot clamp backings
-    sortedNodes.forEach((node) => {
-      const coords = nodeMap.get(node.id);
-      if (coords) {
-        knotClampBackings.push({
-          x: coords.knotX,
-          y: coords.knotY,
-          status: coords.node.status
-        });
-      }
-    });
 
     // Lead-in wire before the first milestone knot
     const firstCoords = nodeMap.get(sortedNodes[0].id);
@@ -317,45 +299,6 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
       }}
     >
       <defs>
-        {/* Completed Wire Flow Arrow */}
-        <marker
-          id="wire-arrow-completed"
-          viewBox="0 0 10 10"
-          refX="7"
-          refY="5"
-          markerWidth="6"
-          markerHeight="6"
-          orient="auto"
-        >
-          <path d="M 1 2 L 7 5 L 1 8 z" fill="#ececf0" />
-        </marker>
-
-        {/* Active Wire Flow Arrow */}
-        <marker
-          id="wire-arrow-active"
-          viewBox="0 0 10 10"
-          refX="7"
-          refY="5"
-          markerWidth="6"
-          markerHeight="6"
-          orient="auto"
-        >
-          <path d="M 1 2 L 7 5 L 1 8 z" fill="#9e9ea7" />
-        </marker>
-
-        {/* Planned Wire Flow Arrow */}
-        <marker
-          id="wire-arrow-planned"
-          viewBox="0 0 10 10"
-          refX="7"
-          refY="5"
-          markerWidth="6"
-          markerHeight="6"
-          orient="auto"
-        >
-          <path d="M 1 2 L 7 5 L 1 8 z" fill="#52525b" />
-        </marker>
-
         {/* Future Trajectory Arrow */}
         <marker
           id="future-arrow"
@@ -462,25 +405,12 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         />
       ))}
 
-      {/* 3. Under-Knot Clamp Backings (anchoring the knot onto the wire) */}
-      {knotClampBackings.map((knot, idx) => (
-        <g key={`knot-backing-${idx}`}>
-          <circle
-            cx={knot.x}
-            cy={knot.y}
-            r="12"
-            fill="#121317"
-            stroke="#2a2b34"
-            strokeWidth="1.5"
-            opacity="0.85"
-          />
-        </g>
-      ))}
-
-      {/* 4. Active Clothesline Wire Segments between Knots */}
+      {/* 3. Active Clothesline Wire Segments between Knots */}
       {knotWireSegments.map((seg) => {
         const isCompleted = seg.status === 'completed';
         const isInProgress = seg.status === 'in_progress';
+        const midX = (seg.startX + seg.endX) / 2;
+        const segColor = isCompleted ? '#ececf0' : isInProgress ? '#9e9ea7' : '#454754';
 
         return (
           <g key={seg.id}>
@@ -491,30 +421,34 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
               x2={seg.endX}
               y2={seg.wireY}
               stroke="#101114"
-              strokeWidth="4"
+              strokeWidth="3.5"
             />
-            {/* Illuminated / active clothesline wire */}
+            {/* Illuminated / active taut wire running cleanly between knots */}
             <line
               x1={seg.startX}
               y1={seg.wireY}
               x2={seg.endX}
               y2={seg.wireY}
-              stroke={isCompleted ? '#ececf0' : isInProgress ? '#9e9ea7' : '#454754'}
+              stroke={segColor}
               strokeWidth={isCompleted ? '2' : '1.5'}
               strokeDasharray={isCompleted ? undefined : isInProgress ? '5 3' : '4 4'}
-              markerEnd={
-                isCompleted
-                  ? 'url(#wire-arrow-completed)'
-                  : isInProgress
-                  ? 'url(#wire-arrow-active)'
-                  : 'url(#wire-arrow-planned)'
-              }
             />
+            {/* Mid-span subtle flow chevron (direction indicator without poking into knot) */}
+            {seg.endX - seg.startX >= 36 && (
+              <path
+                d={`M ${midX - 3} ${seg.wireY - 3.5} L ${midX + 2} ${seg.wireY} L ${midX - 3} ${seg.wireY + 3.5}`}
+                fill="none"
+                stroke={segColor}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
           </g>
         );
       })}
 
-      {/* 5. Future Trajectory Wires (continuing past the last knot) */}
+      {/* 4. Future Trajectory Wires (continuing past the last knot) */}
       {futureWires.map((fw, idx) => (
         <line
           key={`future-${idx}`}
@@ -529,7 +463,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         />
       ))}
 
-      {/* 6. Branch Offshoots (Dropping gracefully from parent knot to child wire) */}
+      {/* 5. Branch Offshoots (Dropping gracefully from parent knot to child wire) */}
       {branchLines.map((branch) => (
         <g key={branch.id}>
           {/* Branch curve with smooth left-to-right flow */}
@@ -541,8 +475,6 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             strokeDasharray="6 4"
             markerEnd="url(#branch-arrow)"
           />
-          {/* Branch start pivot anchor on parent knot */}
-          <circle cx={branch.startX} cy={branch.startY} r="4.5" fill="#141519" stroke="#ececf0" strokeWidth="1.5" />
           {/* Branch indicator pill */}
           <rect
             x={branch.startX + 18}
@@ -567,7 +499,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         </g>
       ))}
 
-      {/* 7. Inter-Node Dependencies between Knots */}
+      {/* 6. Inter-Node Dependencies between Knots */}
       {depLines.map((dep) => (
         <g key={dep.id}>
           <path
@@ -578,11 +510,10 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             strokeDasharray="4 3"
             markerEnd="url(#dep-arrow)"
           />
-          <circle cx={dep.startX} cy={dep.startY} r="3.5" fill="#ececf0" />
         </g>
       ))}
 
-      {/* 8. Traveling Light Beam on Selected Track (Tia sáng di chuyển dọc sợi dây clothesline qua các nút) */}
+      {/* 7. Traveling Light Beam on Selected Track (Tia sáng di chuyển dọc sợi dây clothesline qua các nút) */}
       {selectedTrackPath && (
         <g key={`beam-${selectedTrackId}`} className="pointer-events-none">
           {/* Luminous aura track pulse */}

@@ -236,7 +236,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
           />
 
           {/* Tracks Stack */}
-          <div className="flex flex-col divide-y divide-[#222328]">
+          <div className="flex flex-col">
             {timelines.map((track) => {
               const trackHeight = getTrackHeight(track);
               const isSelectedTrack = selectedTrackId === track.id;

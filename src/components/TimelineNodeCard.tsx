@@ -188,10 +188,10 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
     >
       {/* Clothesline Knot Peg & Hanger Stem connecting down to card */}
       <div
-        className="absolute left-6 -translate-x-1/2 pointer-events-none select-none flex flex-col items-center w-5"
+        className="absolute left-[23px] -translate-x-1/2 pointer-events-none select-none flex flex-col items-center w-5"
         style={{
-          top: `-${28 + lane * 130}px`,
-          height: `${28 + lane * 130}px`
+          top: `-${29 + lane * 130}px`,
+          height: `${29 + lane * 130}px`
         }}
       >
         {/* Knot Peg clamped on the timeline wire */}
