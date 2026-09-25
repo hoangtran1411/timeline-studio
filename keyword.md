@@ -60,7 +60,7 @@
 | **Dependency Line** | `BranchConnectionLayer.tsx` | Dotted line with directional arrow showing task dependencies. |
 | **Node Drawer** | `NodeDrawer.tsx` | Slide-over inspector panel for creating and editing milestone details. |
 | **Drawer Resize Splitter** | `NodeDrawer.tsx` | Left-edge draggable splitter handle to resize the drawer width. |
-| **Bottom Matrix Panel** | `BottomMatrixPanel.tsx` | Resizable bottom spreadsheet view of all milestones across tracks. |
+| **Bottom Matrix Panel** | `ComparisonMatrix.tsx` | Resizable bottom spreadsheet view of all milestones across tracks. |
 | **Bottom Splitter** | `page.tsx` | Horizontal draggable splitter controlling bottom panel height. |
 | **Top Toolbar** | `TopToolbar.tsx` | Header bar with search input, zoom controls, and grid styles. |
 | **Add Timeline Modal** | `AddTimelineModal.tsx` | Pop-up modal for creating a new track or branching an existing one. |
@@ -156,7 +156,7 @@
 
 ### 12. `Bottom Matrix Panel` & `Bottom Splitter`
 
-- **Location**: `src/components/BottomMatrixPanel.tsx`, `src/app/page.tsx`
+- **Location**: `src/components/ComparisonMatrix.tsx`, `src/app/page.tsx`
 - **Visual**: Spreadsheet-like matrix view at the bottom of the screen.
 - **Splitter**: Horizontal border handle (`h-2 cursor-row-resize`). Drag up/down to adjust height. Double-click collapses/expands the panel.
 - **Storage**: Height and collapse states are persisted to `localStorage`.

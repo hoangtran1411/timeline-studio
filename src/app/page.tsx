@@ -400,6 +400,10 @@ export default function TimelineStudioPage() {
               return next;
             });
           }}
+          onSelectNode={(node) => {
+            setSelectedNode(node);
+            setIsNodeDrawerOpen(true);
+          }}
         />
       </main>
 
