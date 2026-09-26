@@ -82,6 +82,13 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     } catch (_) {}
   }, []);
 
+  // Reset horizontal scroll position when project/origin date changes
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 0;
+    }
+  }, [originDate]);
+
   const handleResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     resizeStartX.current = e.clientX;
@@ -192,7 +199,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
 
       {/* Resizable Divider Splitter Handle */}
       <div
-        className={`relative z-40 w-1.5 flex-shrink-0 cursor-col-resize group flex items-center justify-center transition-colors ${
+        className={`relative z-20 w-1.5 flex-shrink-0 cursor-col-resize group flex items-center justify-center transition-colors ${
           isResizingSidebar ? 'bg-[#ececf0]' : 'bg-[#222328] hover:bg-[#3e404b]'
         }`}
         title="Drag to resize track panel (Double-click to reset to default)"

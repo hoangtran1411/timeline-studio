@@ -1,6 +1,18 @@
 export type NodeStatus = 'planned' | 'in_progress' | 'completed' | 'blocked';
 export type NodePriority = 'low' | 'medium' | 'high';
 
+export interface Project {
+  id: string;
+  name: string;
+  description?: string | null;
+  color?: string;
+  icon?: string;
+  timelineCount?: number;
+  nodeCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface TimelineNode {
   id: string;
   timelineId: string;
@@ -17,6 +29,7 @@ export interface TimelineNode {
 
 export interface TimelineTrack {
   id: string;
+  projectId?: string | null;
   title: string;
   description?: string | null;
   color: string;
@@ -36,6 +49,7 @@ export interface NodeDependency {
 }
 
 export interface FullTimelineData {
+  project?: Project | null;
   timelines: TimelineTrack[];
   archivedTimelines?: TimelineTrack[];
   dependencies: NodeDependency[];

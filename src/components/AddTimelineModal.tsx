@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TimelineTrack } from '@/types/timeline';
-import { X, GitFork, Layers } from 'lucide-react';
+import { TimelineTrack, Project } from '@/types/timeline';
+import { X, GitFork, Layers, Folder } from 'lucide-react';
+import { renderProjectIcon } from './Header';
 
 interface AddTimelineModalProps {
   isOpen: boolean;
@@ -11,11 +12,14 @@ interface AddTimelineModalProps {
   preselectedParentId?: string | null;
   preselectedBranchNodeId?: string | null;
   onCreateTimeline: (data: {
+    projectId?: string;
     title: string;
     description?: string;
     parentTimelineId?: string | null;
     branchPointNodeId?: string | null;
   }) => Promise<void>;
+  projects?: Project[];
+  activeProjectId?: string;
 }
 
 export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
@@ -24,14 +28,25 @@ export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
   timelines,
   preselectedParentId,
   preselectedBranchNodeId,
-  onCreateTimeline
+  onCreateTimeline,
+  projects = [],
+  activeProjectId
 }) => {
+  const [targetProjectId, setTargetProjectId] = useState<string>(activeProjectId || '');
   const [trackType, setTrackType] = useState<'independent' | 'branch'>('independent');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [parentTimelineId, setParentTimelineId] = useState('');
   const [branchPointNodeId, setBranchPointNodeId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (activeProjectId) {
+      setTargetProjectId(activeProjectId);
+    } else if (projects.length > 0) {
+      setTargetProjectId(projects[0].id);
+    }
+  }, [activeProjectId, projects]);
 
   useEffect(() => {
     if (preselectedParentId) {
@@ -61,6 +76,7 @@ export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
     setIsSubmitting(true);
     try {
       await onCreateTimeline({
+        projectId: targetProjectId || undefined,
         title: title.trim(),
         description: description.trim() || undefined,
         parentTimelineId: trackType === 'branch' ? parentTimelineId : null,
@@ -73,7 +89,7 @@ export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[110] overflow-hidden flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
@@ -100,6 +116,27 @@ export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Target Project Selection */}
+          {projects.length > 0 && (
+            <div>
+              <label className="block text-[#9e9ea7] mb-1.5 font-medium flex items-center gap-1.5 text-[11px]">
+                <Folder className="w-3.5 h-3.5" />
+                <span>Target Project Workspace</span>
+              </label>
+              <select
+                value={targetProjectId}
+                onChange={(e) => setTargetProjectId(e.target.value)}
+                className="w-full bg-[#18191e] border border-[#2a2b32] rounded-lg px-3 py-2 text-[#ececf0] focus:outline-none focus:border-[#454754]"
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {renderProjectIcon(p.icon)} {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Mode Selector */}
           <div>
             <label className="block text-[#9e9ea7] mb-2 font-medium">Timeline Type</label>
@@ -185,14 +222,16 @@ export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
 
           {/* Title */}
           <div>
-            <label className="block text-[#9e9ea7] mb-1 font-medium">Timeline Name *</label>
+            <label className="block text-[#9e9ea7] mb-1 font-medium">
+              Track Title <span className="text-red-400">*</span>
+            </label>
             <input
               type="text"
+              required
+              placeholder="e.g. Backend API, Competitor X, Mobile App..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Q4 Marketing Rollout or Competitor B"
-              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
-              required
+              className="w-full bg-[#16171b] border border-[#222328] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#4e505e]"
             />
           </div>
 
@@ -201,28 +240,28 @@ export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
             <label className="block text-[#9e9ea7] mb-1 font-medium">Description (Optional)</label>
             <textarea
               rows={2}
+              placeholder="Goal, owner, or focus of this track..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Context or objective for this timeline..."
-              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754] resize-none"
+              className="w-full bg-[#16171b] border border-[#222328] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#4e505e] resize-none"
             />
           </div>
 
-          {/* Actions */}
-          <div className="pt-3 flex items-center justify-end gap-2 border-t border-[#222328]">
+          {/* Submit & Cancel */}
+          <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#222328]">
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-2 rounded-md border border-[#2a2b32] text-[#9e9ea7] hover:text-[#ececf0] transition-colors"
+              className="px-3 py-1.5 rounded text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#1a1b20] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-md bg-[#ffffff] hover:bg-[#e4e4e7] text-black font-semibold transition-colors disabled:opacity-50"
+              disabled={isSubmitting || !title.trim()}
+              className="px-4 py-1.5 rounded bg-white hover:bg-[#e4e4e7] disabled:opacity-50 text-black font-semibold transition-colors"
             >
-              {isSubmitting ? 'Creating...' : trackType === 'branch' ? 'Create Branch Track' : 'Create Timeline'}
+              {isSubmitting ? 'Creating...' : 'Create Track'}
             </button>
           </div>
         </form>

@@ -1,29 +1,146 @@
 import { getDb } from './db';
-import { TimelineTrack, TimelineNode, NodeDependency, FullTimelineData, NodeStatus, NodePriority } from '@/types/timeline';
+import { TimelineTrack, TimelineNode, NodeDependency, FullTimelineData, NodeStatus, NodePriority, Project } from '@/types/timeline';
 import { parseDate, compareDateStrings } from '@/utils/date-utils';
 
-export function getFullTimelineData(): FullTimelineData {
+export function getProjects(): Project[] {
   const db = getDb();
-
-  const timelineRows = db.prepare(`
-    SELECT id, title, description, color, parent_timeline_id, branch_point_node_id, order_index,
-           COALESCE(is_archived, 0) as is_archived,
-           COALESCE(is_visible, 1) as is_visible
-    FROM timelines
-    ORDER BY order_index ASC, created_at ASC
+  const rows = db.prepare(`
+    SELECT p.id, p.name, p.description, p.color, p.icon, p.created_at, p.updated_at,
+           COUNT(DISTINCT t.id) as timeline_count,
+           COUNT(DISTINCT n.id) as node_count
+    FROM projects p
+    LEFT JOIN timelines t ON t.project_id = p.id AND (t.is_archived = 0 OR t.is_archived IS NULL)
+    LEFT JOIN nodes n ON n.timeline_id = t.id
+    GROUP BY p.id
+    ORDER BY p.created_at ASC
   `).all() as Array<{
     id: string;
-    title: string;
+    name: string;
     description: string | null;
-    color: string;
-    parent_timeline_id: string | null;
-    branch_point_node_id: string | null;
-    order_index: number;
-    is_archived: number;
-    is_visible: number;
+    color: string | null;
+    icon: string | null;
+    created_at: string;
+    updated_at: string;
+    timeline_count: number;
+    node_count: number;
   }>;
 
-  const nodeRows = db.prepare(`
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    color: r.color || 'indigo',
+    icon: r.icon || 'folder',
+    timelineCount: r.timeline_count,
+    nodeCount: r.node_count,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at
+  }));
+}
+
+export function createProject(params: {
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+}): Project {
+  const db = getDb();
+  const id = 'proj-' + Math.random().toString(36).substring(2, 9);
+  db.prepare(`
+    INSERT INTO projects (id, name, description, color, icon)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
+    id,
+    params.name,
+    params.description || null,
+    params.color || 'indigo',
+    params.icon || 'folder'
+  );
+  return {
+    id,
+    name: params.name,
+    description: params.description || null,
+    color: params.color || 'indigo',
+    icon: params.icon || 'folder',
+    timelineCount: 0,
+    nodeCount: 0
+  };
+}
+
+export function updateProject(id: string, params: {
+  name?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+}) {
+  const db = getDb();
+  if (params.name !== undefined) {
+    db.prepare('UPDATE projects SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.name, id);
+  }
+  if (params.description !== undefined) {
+    db.prepare('UPDATE projects SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.description, id);
+  }
+  if (params.color !== undefined) {
+    db.prepare('UPDATE projects SET color = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.color, id);
+  }
+  if (params.icon !== undefined) {
+    db.prepare('UPDATE projects SET icon = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.icon, id);
+  }
+}
+
+export function deleteProject(id: string) {
+  const db = getDb();
+  db.prepare('DELETE FROM timelines WHERE project_id = ?').run(id);
+  db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+}
+
+export function getFullTimelineData(requestedProjectId?: string): FullTimelineData {
+  const db = getDb();
+  const projects = getProjects();
+  const activeProject = (requestedProjectId ? projects.find(p => p.id === requestedProjectId) : null) || projects[0] || null;
+
+  const timelineRows = activeProject
+    ? (db.prepare(`
+        SELECT id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index,
+               COALESCE(is_archived, 0) as is_archived,
+               COALESCE(is_visible, 1) as is_visible
+        FROM timelines
+        WHERE project_id = ?
+        ORDER BY order_index ASC, created_at ASC
+      `).all(activeProject.id) as Array<{
+        id: string;
+        project_id: string | null;
+        title: string;
+        description: string | null;
+        color: string;
+        parent_timeline_id: string | null;
+        branch_point_node_id: string | null;
+        order_index: number;
+        is_archived: number;
+        is_visible: number;
+      }>)
+    : (db.prepare(`
+        SELECT id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index,
+               COALESCE(is_archived, 0) as is_archived,
+               COALESCE(is_visible, 1) as is_visible
+        FROM timelines
+        ORDER BY order_index ASC, created_at ASC
+      `).all() as Array<{
+        id: string;
+        project_id: string | null;
+        title: string;
+        description: string | null;
+        color: string;
+        parent_timeline_id: string | null;
+        branch_point_node_id: string | null;
+        order_index: number;
+        is_archived: number;
+        is_visible: number;
+      }>);
+
+  const activeTimelineIds = new Set(timelineRows.map(r => r.id));
+
+  const allNodeRows = db.prepare(`
     SELECT id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags
     FROM nodes
     ORDER BY start_date ASC, order_index ASC
@@ -39,6 +156,9 @@ export function getFullTimelineData(): FullTimelineData {
     order_index: number;
     tags: string | null;
   }>;
+
+  // Filter nodes for timelines that belong to this project
+  const nodeRows = allNodeRows.filter(r => activeTimelineIds.has(r.timeline_id));
 
   const depRows = db.prepare(`
     SELECT id, from_node_id, to_node_id, type
@@ -79,6 +199,7 @@ export function getFullTimelineData(): FullTimelineData {
 
   const allTracks: TimelineTrack[] = timelineRows.map(row => ({
     id: row.id,
+    projectId: row.project_id,
     title: row.title,
     description: row.description,
     color: row.color,
@@ -93,14 +214,17 @@ export function getFullTimelineData(): FullTimelineData {
   const activeTimelines = allTracks.filter(t => !t.isArchived);
   const archivedTimelines = allTracks.filter(t => t.isArchived);
 
-  const dependencies: NodeDependency[] = depRows.map(row => ({
-    id: row.id,
-    fromNodeId: row.from_node_id,
-    toNodeId: row.to_node_id,
-    type: row.type as 'blocks' | 'relates_to' | 'branch_from'
-  }));
+  const activeNodeIds = new Set(nodeRows.map(n => n.id));
+  const dependencies: NodeDependency[] = depRows
+    .filter(row => activeNodeIds.has(row.from_node_id) && activeNodeIds.has(row.to_node_id))
+    .map(row => ({
+      id: row.id,
+      fromNodeId: row.from_node_id,
+      toNodeId: row.to_node_id,
+      type: row.type as 'blocks' | 'relates_to' | 'branch_from'
+    }));
 
-  return { timelines: activeTimelines, archivedTimelines, dependencies };
+  return { project: activeProject, timelines: activeTimelines, archivedTimelines, dependencies };
 }
 
 /**
@@ -138,6 +262,7 @@ function assignCollisionLanes(nodes: TimelineNode[]): void {
 }
 
 export function createTimeline(params: {
+  projectId?: string;
   title: string;
   description?: string;
   parentTimelineId?: string | null;
@@ -146,12 +271,14 @@ export function createTimeline(params: {
   const db = getDb();
   const id = 'timeline-' + Math.random().toString(36).substring(2, 9);
   const maxOrder = (db.prepare('SELECT COALESCE(MAX(order_index), -1) as max_order FROM timelines').get() as { max_order: number }).max_order;
+  const projectId = params.projectId || 'proj-historical';
 
   db.prepare(`
-    INSERT INTO timelines (id, title, description, parent_timeline_id, branch_point_node_id, order_index)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO timelines (id, project_id, title, description, parent_timeline_id, branch_point_node_id, order_index)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
+    projectId,
     params.title,
     params.description || null,
     params.parentTimelineId || null,
@@ -161,6 +288,7 @@ export function createTimeline(params: {
 
   return {
     id,
+    projectId,
     title: params.title,
     description: params.description || null,
     color: 'zinc',
@@ -172,12 +300,16 @@ export function createTimeline(params: {
 }
 
 export function updateTimeline(id: string, params: {
+  projectId?: string;
   title?: string;
   description?: string;
   isArchived?: boolean;
   isVisible?: boolean;
 }) {
   const db = getDb();
+  if (params.projectId !== undefined) {
+    db.prepare('UPDATE timelines SET project_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.projectId, id);
+  }
   if (params.title !== undefined) {
     db.prepare('UPDATE timelines SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(params.title, id);
   }

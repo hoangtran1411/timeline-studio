@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getFullTimelineData, createTimeline } from '@/lib/timeline-service';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const data = getFullTimelineData();
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get('projectId') || undefined;
+    const data = getFullTimelineData(projectId);
     return NextResponse.json(data);
   } catch (error) {
     console.error('Failed to get timeline data:', error);
@@ -19,6 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
     const timeline = createTimeline({
+      projectId: body.projectId,
       title: body.title,
       description: body.description,
       parentTimelineId: body.parentTimelineId,

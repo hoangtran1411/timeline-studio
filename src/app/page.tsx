@@ -1,17 +1,24 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { TimelineNode, FullTimelineData } from '@/types/timeline';
+import { TimelineNode, FullTimelineData, Project } from '@/types/timeline';
 import { Header } from '@/components/Header';
 import { ChronoCanvas, ChronoCanvasRef } from '@/components/ChronoCanvas';
 import { NodeDrawer } from '@/components/NodeDrawer';
 import { AddTimelineModal } from '@/components/AddTimelineModal';
 import { ArchivedTracksModal } from '@/components/ArchivedTracksModal';
 import { ComparisonMatrix } from '@/components/ComparisonMatrix';
+import { ProjectModal } from '@/components/ProjectModal';
 import { parseDate, getMidpointDate, addDays, formatDateStr } from '@/utils/date-utils';
 
 export default function TimelineStudioPage() {
   const [data, setData] = useState<FullTimelineData>({ timelines: [], dependencies: [] });
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string>('proj-historical');
+  const activeProjectIdRef = useRef<string>('proj-historical');
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [zoom, setZoom] = useState(1.0);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,13 +44,33 @@ export default function TimelineStudioPage() {
 
   const canvasRef = useRef<ChronoCanvasRef>(null);
 
-  // Fetch data from SQLite API
-  const fetchData = async () => {
+  // Fetch project list
+  const fetchProjects = async (): Promise<Project[]> => {
     try {
-      const res = await fetch('/api/timeline');
+      const res = await fetch('/api/projects');
       if (res.ok) {
-        const json = await res.json();
+        const list: Project[] = await res.json();
+        setProjects(list);
+        return list;
+      }
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+    }
+    return [];
+  };
+
+  // Fetch data for a specific project from SQLite API
+  const fetchData = async (projectIdToFetch?: string) => {
+    const targetPid = projectIdToFetch || activeProjectIdRef.current;
+    try {
+      const res = await fetch(`/api/timeline?projectId=${encodeURIComponent(targetPid)}`);
+      if (res.ok) {
+        const json: FullTimelineData = await res.json();
         setData(json);
+        if (json.project?.id) {
+          setActiveProjectId(json.project.id);
+          activeProjectIdRef.current = json.project.id;
+        }
       }
     } catch (err) {
       console.error('Failed to load timelines:', err);
@@ -53,16 +80,95 @@ export default function TimelineStudioPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    const init = async () => {
+      const projectList = await fetchProjects();
+      let initialPid = 'proj-historical';
+      try {
+        const savedPid = localStorage.getItem('timeline_studio_active_project_id');
+        if (savedPid && projectList.some(p => p.id === savedPid)) {
+          initialPid = savedPid;
+        } else if (projectList.length > 0) {
+          initialPid = projectList[0].id;
+        }
+      } catch (_) {}
+
+      setActiveProjectId(initialPid);
+      activeProjectIdRef.current = initialPid;
+      await fetchData(initialPid);
+    };
+
+    init();
   }, []);
+
+  // Project Switcher and Management Handlers
+  const handleSelectProject = async (projectId: string) => {
+    setActiveProjectId(projectId);
+    activeProjectIdRef.current = projectId;
+    try {
+      localStorage.setItem('timeline_studio_active_project_id', projectId);
+    } catch (_) {}
+    setSelectedTrackId(null);
+    setSelectedNode(null);
+    await fetchData(projectId);
+    await fetchProjects();
+  };
+
+  const handleOpenCreateProject = () => {
+    setEditingProject(null);
+    setIsProjectModalOpen(true);
+  };
+
+  const handleOpenEditProject = (project: Project) => {
+    setEditingProject(project);
+    setIsProjectModalOpen(true);
+  };
+
+  const handleSaveProject = async (projectData: {
+    name: string;
+    description?: string;
+    color?: string;
+    icon?: string;
+  }) => {
+    if (editingProject) {
+      await fetch(`/api/projects/${editingProject.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projectData)
+      });
+      await fetchProjects();
+      await fetchData(activeProjectIdRef.current);
+    } else {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(projectData)
+      });
+      if (res.ok) {
+        const newProject: Project = await res.json();
+        await fetchProjects();
+        await handleSelectProject(newProject.id);
+      }
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+    const remaining = await fetchProjects();
+    if (activeProjectIdRef.current === projectId) {
+      const nextPid = remaining.length > 0 ? remaining[0].id : 'proj-historical';
+      await handleSelectProject(nextPid);
+    } else {
+      await fetchData(activeProjectIdRef.current);
+    }
+  };
 
   // Dynamic today's date string in YYYY-MM-DD based on current real-time clock
   const todayDateStr = useMemo(() => formatDateStr(new Date()), []);
 
-  // Compute overall timeline date span dynamically encompassing all nodes and today
+  // Compute overall timeline date span dynamically based on active project nodes
   const { originDate, totalDays } = useMemo(() => {
-    let minTime = parseDate(todayDateStr).getTime();
-    let maxTime = minTime;
+    let minTime = Infinity;
+    let maxTime = -Infinity;
 
     data.timelines.forEach(track => {
       track.nodes.forEach(node => {
@@ -72,6 +178,20 @@ export default function TimelineStudioPage() {
         if (eTime > maxTime) maxTime = eTime;
       });
     });
+
+    // If there are no nodes in this project, default to a window around today
+    if (minTime === Infinity || maxTime === -Infinity) {
+      const todayTime = parseDate(todayDateStr).getTime();
+      minTime = todayTime - 30 * 24 * 60 * 60 * 1000;
+      maxTime = todayTime + 180 * 24 * 60 * 60 * 1000;
+    } else {
+      // If today falls close to or within the project date range, include today
+      const todayTime = parseDate(todayDateStr).getTime();
+      if (todayTime >= minTime - 365 * 24 * 60 * 60 * 1000 && todayTime <= maxTime + 365 * 24 * 60 * 60 * 1000) {
+        if (todayTime < minTime) minTime = todayTime;
+        if (todayTime > maxTime) maxTime = todayTime;
+      }
+    }
 
     const origin = new Date(minTime);
     // Add extra padding days for smooth scrolling
@@ -130,6 +250,7 @@ export default function TimelineStudioPage() {
       });
     }
     await fetchData();
+    await fetchProjects();
   };
 
   // Handler: Delete Node
@@ -139,6 +260,7 @@ export default function TimelineStudioPage() {
       setSelectedNode(null);
     }
     await fetchData();
+    await fetchProjects();
   };
 
   // Handler: Move or Resize Node (Drag and Drop)
@@ -171,17 +293,27 @@ export default function TimelineStudioPage() {
 
   // Handler: Create Timeline Track
   const handleCreateTimeline = async (timelineData: {
+    projectId?: string;
     title: string;
     description?: string;
     parentTimelineId?: string | null;
     branchPointNodeId?: string | null;
   }) => {
+    const targetProject = timelineData.projectId || activeProjectIdRef.current;
     await fetch('/api/timeline', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(timelineData)
+      body: JSON.stringify({
+        ...timelineData,
+        projectId: targetProject
+      })
     });
-    await fetchData();
+    if (targetProject !== activeProjectIdRef.current) {
+      await handleSelectProject(targetProject);
+    } else {
+      await fetchData();
+      await fetchProjects();
+    }
   };
 
   // Handler: Toggle track visibility on canvas
@@ -285,18 +417,16 @@ export default function TimelineStudioPage() {
     if (confirm('Are you sure you want to permanently delete this timeline track and all its nodes? This cannot be undone.')) {
       await fetch(`/api/timeline/${timelineId}`, { method: 'DELETE' });
       await fetchData();
+      await fetchProjects();
     }
   };
 
   // Handler: Delete Timeline Track from dock
   const handleDeleteTrack = async (timelineId: string) => {
-    if (data.timelines.length <= 1) {
-      alert('Cannot delete the only timeline track.');
-      return;
-    }
     if (confirm('Are you sure you want to permanently delete this timeline track and all its nodes? (Tip: You can also use Archive to keep it in database)')) {
       await fetch(`/api/timeline/${timelineId}`, { method: 'DELETE' });
       await fetchData();
+      await fetchProjects();
     }
   };
 
@@ -431,6 +561,11 @@ export default function TimelineStudioPage() {
     <div className="h-screen bg-[#101114] flex flex-col overflow-hidden">
       {/* Top Header */}
       <Header
+        projects={projects}
+        currentProject={data.project}
+        onSelectProject={handleSelectProject}
+        onOpenCreateProject={handleOpenCreateProject}
+        onOpenEditProject={handleOpenEditProject}
         timelineCount={data.timelines.length}
         nodeCount={totalNodesCount}
         zoom={zoom}
@@ -490,7 +625,7 @@ export default function TimelineStudioPage() {
 
         {/* Horizontal Resizable Splitter Handle */}
         <div
-          className={`relative z-40 h-2 w-full flex-shrink-0 cursor-row-resize group flex items-center justify-center transition-colors ${
+          className={`relative z-20 h-2 w-full flex-shrink-0 cursor-row-resize group flex items-center justify-center transition-colors ${
             isResizingBottom ? 'bg-[#ececf0]' : 'bg-[#1b1c22] hover:bg-[#32343e]'
           }`}
           title="Drag up/down to resize bottom panel (Double-click to collapse/expand)"
@@ -556,6 +691,8 @@ export default function TimelineStudioPage() {
         preselectedParentId={preselectedParentId}
         preselectedBranchNodeId={preselectedBranchNodeId}
         onCreateTimeline={handleCreateTimeline}
+        projects={projects}
+        activeProjectId={activeProjectId}
       />
 
       {/* Archived Timelines Modal */}
@@ -565,6 +702,15 @@ export default function TimelineStudioPage() {
         archivedTimelines={data.archivedTimelines || []}
         onRestoreTrack={handleRestoreTrack}
         onPermanentDeleteTrack={handlePermanentDeleteTrack}
+      />
+
+      {/* Project Settings & Creation Modal */}
+      <ProjectModal
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        project={editingProject}
+        onSave={handleSaveProject}
+        onDelete={handleDeleteProject}
       />
     </div>
   );

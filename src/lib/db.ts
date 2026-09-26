@@ -21,8 +21,19 @@ export function getDb(): DatabaseSync {
 
 function initSchema(db: DatabaseSync) {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      color TEXT DEFAULT 'indigo',
+      icon TEXT DEFAULT 'folder',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS timelines (
       id TEXT PRIMARY KEY,
+      project_id TEXT,
       title TEXT NOT NULL,
       description TEXT,
       color TEXT DEFAULT 'default',
@@ -32,7 +43,8 @@ function initSchema(db: DatabaseSync) {
       is_archived INTEGER DEFAULT 0,
       is_visible INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS nodes (
@@ -71,12 +83,125 @@ function initSchema(db: DatabaseSync) {
   if (!colNames.has('is_visible')) {
     db.exec('ALTER TABLE timelines ADD COLUMN is_visible INTEGER DEFAULT 1');
   }
+  if (!colNames.has('project_id')) {
+    db.exec('ALTER TABLE timelines ADD COLUMN project_id TEXT');
+  }
+
+  // Seed default projects if projects table is empty
+  const projectCount = (db.prepare('SELECT COUNT(*) as count FROM projects').get() as { count: number }).count;
+  if (projectCount === 0) {
+    seedProjects(db);
+  }
+
+  // Ensure any existing timelines are assigned to the historical project
+  db.exec("UPDATE timelines SET project_id = 'proj-historical' WHERE project_id IS NULL");
+
+  // Normalize project icons if they were saved as raw text names
+  db.exec(`
+    UPDATE projects SET icon = '📜' WHERE icon = 'landmark' OR icon = 'history';
+    UPDATE projects SET icon = '💡' WHERE icon = 'lightbulb' OR icon = 'idea';
+  `);
 
   // Seed default data if timelines table is empty
   const count = (db.prepare('SELECT COUNT(*) as count FROM timelines').get() as { count: number }).count;
   if (count === 0) {
     seedDefaultData(db);
   }
+}
+
+function seedProjects(db: DatabaseSync) {
+  const insertProject = db.prepare(`
+    INSERT INTO projects (id, name, description, color, icon)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  insertProject.run(
+    'proj-historical',
+    'Historical Chronology (Lịch Sử)',
+    'Comparative dynasties, civilizational milestones, and historical clashes',
+    'amber',
+    '📜'
+  );
+
+  insertProject.run(
+    'proj-ideas',
+    'Product Ideas & Roadmap (Ý Tưởng)',
+    'Product brainstorming, startup experiments, feature architectures, and marketing plans',
+    'emerald',
+    '💡'
+  );
+
+  // Seed sample idea track inside proj-ideas
+  const insertTimeline = db.prepare(`
+    INSERT INTO timelines (id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertNode = db.prepare(`
+    INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  insertTimeline.run(
+    'track-idea-core',
+    'proj-ideas',
+    'AI Timeline Studio Platform v2.0',
+    'Architecture and key features for next-gen timeline workspace',
+    'emerald',
+    null,
+    null,
+    0
+  );
+
+  insertTimeline.run(
+    'track-idea-growth',
+    'proj-ideas',
+    'Growth & Launch Experiments',
+    'Community engagement, developer showcase, and interactive demo templates',
+    'teal',
+    null,
+    null,
+    1
+  );
+
+  insertNode.run(
+    'node-idea-multiproject',
+    'track-idea-core',
+    'Multi-Project Workspace Architecture',
+    'Separation of concerns between historical timelines, personal workflows, and tech roadmaps',
+    '2026-10-01',
+    '2026-10-18',
+    'in_progress',
+    'high',
+    0,
+    '#core,#workspace'
+  );
+
+  insertNode.run(
+    'node-idea-export',
+    'track-idea-core',
+    'High-Res PNG / SVG / Markdown Exporter',
+    'Export interactive visual timelines into presentation decks and documentation',
+    '2026-10-25',
+    '2026-11-12',
+    'planned',
+    'medium',
+    1,
+    '#export,#canvas'
+  );
+
+  insertNode.run(
+    'node-idea-showcase',
+    'track-idea-growth',
+    'Open Source Developer Showcase',
+    'Interactive historical and technical timeline templates for the developer community',
+    '2026-10-15',
+    '2026-10-30',
+    'planned',
+    'high',
+    0,
+    '#growth,#launch'
+  );
 }
 
 function seedDefaultData(db: DatabaseSync) {

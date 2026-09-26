@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TimelineTrack, TimelineNode, NodeStatus } from '@/types/timeline';
 import { formatDisplayDate, parseDate } from '@/utils/date-utils';
 import { Table, ChevronDown, ChevronUp, Search, Check, AlertCircle, Clock, Edit3 } from 'lucide-react';
@@ -35,6 +35,13 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
   const [selectedTrackTab, setSelectedTrackTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, _setStatusFilter] = useState<string>('all');
+
+  // Reset selectedTrackTab if the track no longer exists in current project
+  useEffect(() => {
+    if (selectedTrackTab !== 'all' && !timelines.some(t => t.id === selectedTrackTab)) {
+      setSelectedTrackTab('all');
+    }
+  }, [timelines, selectedTrackTab]);
 
   // Flatten all real database nodes across all timeline tracks
   const allNodesWithTrack = useMemo(() => {
