@@ -12,6 +12,7 @@ import { dateToPixelX, pixelXToDate, compareDateStrings } from '@/utils/date-uti
 
 export interface ChronoCanvasRef {
   scrollToToday: () => void;
+  scrollToStart: () => void;
 }
 
 interface ChronoCanvasProps {
@@ -168,18 +169,42 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     }
   };
 
-  useImperativeHandle(ref, () => ({
-    scrollToToday: () => {
-      if (scrollContainerRef.current) {
-        const todayX = dateToPixelX(todayDateStr, originDate, pxPerDay);
-        const containerWidth = scrollContainerRef.current.clientWidth;
-        scrollContainerRef.current.scrollTo({
-          left: Math.max(0, todayX - containerWidth / 2),
-          behavior: 'smooth'
-        });
-      }
+  const handleScrollToToday = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const todayX = dateToPixelX(todayDateStr, originDate, pxPerDay);
+      const containerWidth = scrollContainerRef.current.clientWidth;
+      scrollContainerRef.current.scrollTo({
+        left: Math.max(0, todayX - containerWidth / 2),
+        behavior: 'smooth'
+      });
     }
-  }));
+  }, [todayDateStr, originDate, pxPerDay]);
+
+  const handleScrollToStart = useCallback(() => {
+    if (scrollContainerRef.current) {
+      let earliestX = 0;
+      let found = false;
+      timelines.forEach(track => {
+        track.nodes.forEach(node => {
+          const x = dateToPixelX(node.startDate, originDate, pxPerDay);
+          if (!found || x < earliestX) {
+            earliestX = x;
+            found = true;
+          }
+        });
+      });
+      const targetLeft = found ? Math.max(0, earliestX - 40) : 0;
+      scrollContainerRef.current.scrollTo({
+        left: targetLeft,
+        behavior: 'smooth'
+      });
+    }
+  }, [timelines, originDate, pxPerDay]);
+
+  useImperativeHandle(ref, () => ({
+    scrollToToday: handleScrollToToday,
+    scrollToStart: handleScrollToStart
+  }), [handleScrollToToday, handleScrollToStart]);
 
   // Calculate track heights based on the maximum collision lane within that track
   const getTrackHeight = useCallback((track: TimelineTrack): number => {
@@ -418,17 +443,6 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     });
   };
 
-  const handleScrollToToday = () => {
-    if (scrollContainerRef.current) {
-      const todayX = dateToPixelX(todayDateStr, originDate, pxPerDay);
-      const containerWidth = scrollContainerRef.current.clientWidth;
-      scrollContainerRef.current.scrollTo({
-        left: Math.max(0, todayX - containerWidth / 2),
-        behavior: 'smooth'
-      });
-    }
-  };
-
   return (
     <div className="relative w-full flex-1 flex overflow-hidden min-h-[280px] bg-[#101114] border-b border-[#222328]">
       {/* Left Dock: Track names, branch metadata, controls */}
@@ -456,7 +470,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
 
       {/* Resizable Divider Splitter Handle */}
       <div
-        className={`relative z-20 w-1.5 flex-shrink-0 cursor-col-resize group flex items-center justify-center transition-colors ${
+        className={`relative z-30 w-1.5 flex-shrink-0 cursor-col-resize group flex items-center justify-center transition-colors ${
           isResizingSidebar ? 'bg-[#ececf0]' : 'bg-[#222328] hover:bg-[#3e404b]'
         }`}
         title="Drag to resize track panel (Double-click to reset to default)"
@@ -519,7 +533,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
 
           {/* Tracks Stack */}
           <div
-            className="flex flex-col pb-6"
+            className="flex flex-col pb-6 relative z-10"
             onClick={(e) => {
               if (e.target === e.currentTarget && selectedTrackId) {
                 onSelectTrack?.(null);
@@ -594,8 +608,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                     // Layering base: Upper lanes (lane 0) MUST have higher z-index than lower lanes (lane 1, 2)
                     // so that hanger stems extending down to lower lanes pass cleanly BEHIND upper lane cards.
                     // Within the same lane, chronologically later cards layer slightly higher.
-                    const laneBaseZ = (10 - Math.min(node.lane || 0, 9)) * 10000;
-                    const cardZIndex = laneBaseZ + chronoIndex;
+                    const laneBaseZ = Math.max(0, 4 - (node.lane || 0)) * 1000;
+                    const cardZIndex = laneBaseZ + (chronoIndex % 500);
 
                     return (
                       <TimelineNodeCard
@@ -678,6 +692,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         onSelectTrack={onSelectTrack}
         onOpenAddTimeline={onOpenAddTimeline}
         onScrollToToday={handleScrollToToday}
+        onScrollToStart={handleScrollToStart}
         onResetZoom={onResetZoom}
       />
     </div>

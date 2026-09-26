@@ -16,7 +16,8 @@ import {
   ChevronDown,
   Pencil,
   FolderPlus,
-  Check
+  Check,
+  SkipBack
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -30,6 +31,7 @@ interface HeaderProps {
   zoom: number;
   onZoomChange: (newZoom: number) => void;
   onCenterToday: () => void;
+  onScrollToStart?: () => void;
   onOpenAddTimeline: () => void;
   onOpenAddNode: () => void;
   searchQuery: string;
@@ -66,6 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
   zoom,
   onZoomChange,
   onCenterToday,
+  onScrollToStart,
   onOpenAddTimeline,
   onOpenAddNode,
   searchQuery,
@@ -96,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isProjectDropdownOpen]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#222328] bg-[#121316]/95 backdrop-blur px-5 py-2.5 flex flex-col gap-2">
+    <header className="sticky top-0 z-[100] w-full border-b border-[#222328] bg-[#121316]/95 backdrop-blur px-5 py-2.5 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-4">
         {/* Left Section: App Brand & Project Switcher */}
         <div className="flex items-center gap-3.5 min-w-0">
@@ -280,9 +283,21 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
+          {/* Return to Timeline Beginning */}
+          {onScrollToStart && (
+            <button
+              onClick={onScrollToStart}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#222328] bg-[#16171b] hover:bg-[#202127] text-xs text-[#9e9ea7] hover:text-[#ececf0] transition-colors font-mono cursor-pointer"
+              title="Scroll to beginning of timeline (Đầu mốc thời gian)"
+            >
+              <SkipBack className="w-3.5 h-3.5 text-[#9e9ea7]" />
+              <span>Start</span>
+            </button>
+          )}
+
           <button
             onClick={onCenterToday}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#222328] bg-[#16171b] hover:bg-[#202127] text-xs text-[#9e9ea7] hover:text-[#ececf0] transition-colors font-mono"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#222328] bg-[#16171b] hover:bg-[#202127] text-xs text-[#9e9ea7] hover:text-[#ececf0] transition-colors font-mono cursor-pointer"
             title="Scroll to Today marker"
           >
             <Calendar className="w-3.5 h-3.5" />

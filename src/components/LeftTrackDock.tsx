@@ -53,7 +53,7 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
   return (
     <div
       style={{ width: `${width}px` }}
-      className="flex-shrink-0 z-30 bg-[#121316] border-r border-[#222328] flex flex-col select-none h-full min-h-0"
+      className="flex-shrink-0 z-40 bg-[#121316] border-r border-[#222328] flex flex-col select-none h-full min-h-0"
     >
       {/* Dock Header aligned with the Chrono Ruler (h-16 / 64px) */}
       <div className="h-16 px-4 py-2 border-b border-[#222328] flex items-center justify-between flex-shrink-0 bg-[#121316]">

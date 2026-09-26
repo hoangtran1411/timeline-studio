@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   PlayCircle,
-  Layers
+  Layers,
+  SkipBack
 } from 'lucide-react';
 
 export type ContextMenuType = 'node' | 'track' | 'canvas' | 'dock_track' | 'dock_empty';
@@ -49,6 +50,7 @@ export interface ContextMenuProps {
   onSelectTrack?: (timelineId: string | null) => void;
   onOpenAddTimeline?: () => void;
   onScrollToToday?: () => void;
+  onScrollToStart?: () => void;
   onResetZoom?: () => void;
 }
 
@@ -77,6 +79,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   onSelectTrack,
   onOpenAddTimeline,
   onScrollToToday,
+  onScrollToStart,
   onResetZoom
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -446,6 +449,22 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           )}
 
           <div className="my-1 border-t border-[#242632]" />
+
+          {onScrollToStart && (
+            <button
+              onClick={() => {
+                onScrollToStart?.();
+                onClose();
+              }}
+              className="w-full px-3 py-1.5 flex items-center justify-between hover:bg-[#252838] text-[#e4e4e7] hover:text-white transition-colors cursor-pointer text-left"
+            >
+              <span className="flex items-center gap-2">
+                <SkipBack className="w-3.5 h-3.5 text-[#9e9ea7]" />
+                <span>Jump to Beginning</span>
+              </span>
+              <span className="text-[10px] text-[#71717a] font-mono">Start</span>
+            </button>
+          )}
 
           <button
             onClick={() => {

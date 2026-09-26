@@ -135,7 +135,7 @@ export const ChronoRuler: React.FC<ChronoRulerProps> = ({
   const todayX = dateToPixelX(todayDateStr, originDate, pxPerDay);
 
   return (
-    <div className="sticky top-0 z-30 h-16 bg-[#121316] border-b border-[#222328] select-none">
+    <div className="sticky top-0 z-40 h-16 bg-[#121316] border-b border-[#222328] select-none">
       {/* Major row (Centuries / Years / Months) */}
       <div className="h-8 border-b border-[#222328] relative flex overflow-hidden">
         {majorIntervals.map((m, idx) => (

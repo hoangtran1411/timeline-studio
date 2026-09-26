@@ -208,15 +208,15 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   const topOffset = 56 + lane * 130;
 
   // Layering hierarchy:
-  // Active dragging/resizing moves to absolute top (500000).
-  // Hovered (+2000) and Selected (+1000) apply relative lane-safe boosts so that
+  // Active dragging/resizing moves to top of track stack (10000).
+  // Hovered (+200) and Selected (+100) apply relative lane-safe boosts so that
   // interacting with a lower-lane card never causes its hanger stem to pierce through upper-lane cards.
   const computedZIndex = isDragging || isResizing
-    ? 500000
+    ? 10000
     : isHovered
-    ? zIndex + 2000
+    ? zIndex + 200
     : isSelected
-    ? zIndex + 1000
+    ? zIndex + 100
     : zIndex;
 
   return (

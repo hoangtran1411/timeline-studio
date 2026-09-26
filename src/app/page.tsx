@@ -599,6 +599,7 @@ export default function TimelineStudioPage() {
         zoom={zoom}
         onZoomChange={setZoom}
         onCenterToday={() => canvasRef.current?.scrollToToday()}
+        onScrollToStart={() => canvasRef.current?.scrollToStart()}
         onOpenAddTimeline={() => {
           setPreselectedParentId(null);
           setPreselectedBranchNodeId(null);
@@ -616,7 +617,7 @@ export default function TimelineStudioPage() {
       />
 
       {/* Main Interactive Canvas & Bottom Panel Container */}
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#101114]">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative z-0 isolate bg-[#101114]">
         <ChronoCanvas
           ref={canvasRef}
           timelines={filteredTimelines}
