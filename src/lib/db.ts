@@ -1,6 +1,7 @@
 import { createClient, Client } from '@libsql/client';
 import path from 'node:path';
 import fs from 'node:fs';
+import { seedHistoricalData } from './historical-seed';
 
 let _client: Client | null = null;
 let _schemaInitialized = false;
@@ -149,6 +150,15 @@ export async function ensureSchema(db: Client = getDb()): Promise<void> {
   const count = Number(timelineCountRes.rows[0]?.count ?? 0);
   if (count === 0) {
     await seedDefaultData(db);
+  }
+
+  // Auto-seed historical timelines if proj-historical has 0 timelines
+  const histTimelineRes = await db.execute(
+    "SELECT COUNT(*) as count FROM timelines WHERE project_id = 'proj-historical'"
+  );
+  const histCount = Number(histTimelineRes.rows[0]?.count ?? 0);
+  if (histCount === 0) {
+    await seedHistoricalData(db);
   }
 
   _schemaInitialized = true;
