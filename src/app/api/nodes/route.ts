@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     if (!body.timelineId || !body.title || !body.startDate) {
       return NextResponse.json({ error: 'timelineId, title, and startDate are required' }, { status: 400 });
     }
-    const node = createNode({
+    const node = await createNode({
       timelineId: body.timelineId,
       title: body.title,
       description: body.description,

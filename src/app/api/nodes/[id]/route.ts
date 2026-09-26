@@ -8,7 +8,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    updateNode(id, body);
+    await updateNode(id, body);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to update node:', error);
@@ -23,7 +23,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    deleteNode(id);
+    await deleteNode(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete node:', error);

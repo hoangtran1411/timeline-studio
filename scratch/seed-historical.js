@@ -1,26 +1,36 @@
-const { DatabaseSync } = require('node:sqlite');
+const { createClient } = require('@libsql/client');
 const path = require('node:path');
 
-const dbPath = path.join(process.cwd(), 'data', 'timeline.db');
-const db = new DatabaseSync(dbPath);
+const url = process.env.TURSO_DATABASE_URL || ('file:' + path.join(process.cwd(), 'data', 'timeline.db').replace(/\\/g, '/'));
+const authToken = process.env.TURSO_AUTH_TOKEN;
 
-const insertTimeline = db.prepare(`
-  INSERT OR REPLACE INTO timelines (id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-`);
+const db = createClient({ url, authToken });
 
-const insertNode = db.prepare(`
-  INSERT OR REPLACE INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`);
+const statements = [];
 
-const insertDep = db.prepare(`
-  INSERT OR REPLACE INTO dependencies (id, from_node_id, to_node_id, type)
-  VALUES (?, ?, ?, ?)
-`);
+function addTimeline(id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index) {
+  statements.push({
+    sql: 'INSERT OR REPLACE INTO timelines (id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    args: [id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index]
+  });
+}
+
+function addNode(id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) {
+  statements.push({
+    sql: 'INSERT OR REPLACE INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    args: [id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags]
+  });
+}
+
+function addDep(id, from_node_id, to_node_id, type) {
+  statements.push({
+    sql: 'INSERT OR REPLACE INTO dependencies (id, from_node_id, to_node_id, type) VALUES (?, ?, ?, ?)',
+    args: [id, from_node_id, to_node_id, type]
+  });
+}
 
 // 1. Timeline 1: Trung Hoa (Tần -> Tống)
-insertTimeline.run(
+addTimeline(
   'track-china',
   'proj-historical',
   'Trung Hoa: Từ Nhà Tần Đến Nhà Tống (221 TCN – 1279 SCN)',
@@ -32,7 +42,7 @@ insertTimeline.run(
 );
 
 // 2. Timeline 2: Việt Nam (song song)
-insertTimeline.run(
+addTimeline(
   'track-vietnam',
   'proj-historical',
   'Việt Nam: Từ Thời Âu Lạc Đến Thời Đại Nhà Lý (214 TCN – 1225 SCN)',
@@ -44,7 +54,7 @@ insertTimeline.run(
 );
 
 // 3. Timeline 3: Châu Âu (La Mã -> Sơ Kỳ & Trung Kỳ Trung Cổ)
-insertTimeline.run(
+addTimeline(
   'track-europe',
   'proj-historical',
   'Châu Âu: Từ Cộng Hòa La Mã Đến Thời Trung Cổ (202 TCN – 1280 SCN)',
@@ -56,7 +66,7 @@ insertTimeline.run(
 );
 
 // 4. Timeline 4: Trung Á (Thảo Nguyên & Con Đường Tơ Lụa)
-insertTimeline.run(
+addTimeline(
   'track-central-asia',
   'proj-historical',
   'Trung Á: Thảo Nguyên & Con Đường Tơ Lụa (209 TCN – 1279 SCN)',
@@ -68,7 +78,7 @@ insertTimeline.run(
 );
 
 // 5. Timeline 5: Mông Cổ (Thảo Nguyên Du Mục & Đại Hãn Quốc)
-insertTimeline.run(
+addTimeline(
   'track-mongolia',
   'proj-historical',
   'Mông Cổ: Các Bộ Lạc Thảo Nguyên & Đại Hãn Quốc (200 TCN – 1294 SCN)',
@@ -80,7 +90,7 @@ insertTimeline.run(
 );
 
 // 6. Timeline 6: Nhật Bản (Yayoi -> Kamakura)
-insertTimeline.run(
+addTimeline(
   'track-japan',
   'proj-historical',
   'Nhật Bản: Từ Thời Yayoi Đến Thời Kỳ Kamakura (200 TCN – 1285 SCN)',
@@ -92,7 +102,7 @@ insertTimeline.run(
 );
 
 // 7. Timeline 7: Triều Tiên / Hàn Quốc (Cổ Triều Tiên -> Tam Quốc -> Cao Ly)
-insertTimeline.run(
+addTimeline(
   'track-korea',
   'proj-historical',
   'Triều Tiên: Cổ Triều Tiên, Tam Quốc & Cao Ly (194 TCN – 1290 SCN)',
@@ -104,7 +114,7 @@ insertTimeline.run(
 );
 
 // 8. Timeline 8: Thái Lan (Ban Chiang -> Dvaravati -> Sukhothai)
-insertTimeline.run(
+addTimeline(
   'track-thailand',
   'proj-historical',
   'Thái Lan: Từ Văn Hóa Ban Chiang, Dvaravati Đến Sukhothai (200 TCN – 1296 SCN)',
@@ -940,63 +950,129 @@ const thailandNodes = [
 ];
 
 // Insert nodes for all 8 timelines
-chinaNodes.forEach(n => insertNode.run(...n));
-vietnamNodes.forEach(n => insertNode.run(...n));
-europeNodes.forEach(n => insertNode.run(...n));
-centralAsiaNodes.forEach(n => insertNode.run(...n));
-mongoliaNodes.forEach(n => insertNode.run(...n));
-japanNodes.forEach(n => insertNode.run(...n));
-koreaNodes.forEach(n => insertNode.run(...n));
-thailandNodes.forEach(n => insertNode.run(...n));
+chinaNodes.forEach(n => addNode(...n));
+vietnamNodes.forEach(n => addNode(...n));
+europeNodes.forEach(n => addNode(...n));
+centralAsiaNodes.forEach(n => addNode(...n));
+mongoliaNodes.forEach(n => addNode(...n));
+japanNodes.forEach(n => addNode(...n));
+koreaNodes.forEach(n => addNode(...n));
+thailandNodes.forEach(n => addNode(...n));
 
 // Cross-timeline historical dependencies
 // 1. China <-> Vietnam
-insertDep.run('dep-qin-aulac', 'node-qin-empire', 'node-au-lac', 'historical_clash');
-insertDep.run('dep-han-haibatrung', 'node-han-dynasty', 'node-hai-ba-trung', 'uprising');
-insertDep.run('dep-three-batrieu', 'node-three-kingdoms', 'node-ba-trieu', 'uprising');
-insertDep.run('dep-tang-bachdang', 'node-five-dynasties', 'node-bach-dang-938', 'decisive_victory');
-insertDep.run('dep-song-lehoan', 'node-song-dynasty', 'node-le-hoan-pha-tong', 'defense');
-insertDep.run('dep-song-lythuongkiet', 'node-song-dynasty', 'node-ly-thuong-kiet', 'defense');
+addDep('dep-qin-aulac', 'node-qin-empire', 'node-au-lac', 'historical_clash');
+addDep('dep-han-haibatrung', 'node-han-dynasty', 'node-hai-ba-trung', 'uprising');
+addDep('dep-three-batrieu', 'node-three-kingdoms', 'node-ba-trieu', 'uprising');
+addDep('dep-tang-bachdang', 'node-five-dynasties', 'node-bach-dang-938', 'decisive_victory');
+addDep('dep-song-lehoan', 'node-song-dynasty', 'node-le-hoan-pha-tong', 'defense');
+addDep('dep-song-lythuongkiet', 'node-song-dynasty', 'node-ly-thuong-kiet', 'defense');
 
 // 2. China <-> Central Asia
-insertDep.run('dep-han-xiongnu', 'node-han-dynasty', 'node-asia-xiongnu', 'steppe_rivalry');
-insertDep.run('dep-han-kushan', 'node-han-dynasty', 'node-asia-kushan', 'silk_road_trade');
-insertDep.run('dep-sogdian-tang', 'node-asia-sogdian', 'node-tang-dynasty', 'cultural_exchange');
-insertDep.run('dep-tang-talas', 'node-tang-dynasty', 'node-asia-talas', 'clash_of_civilizations');
-insertDep.run('dep-mongol-song', 'node-asia-mongol-conquest', 'node-song-dynasty', 'conquest');
+addDep('dep-han-xiongnu', 'node-han-dynasty', 'node-asia-xiongnu', 'steppe_rivalry');
+addDep('dep-han-kushan', 'node-han-dynasty', 'node-asia-kushan', 'silk_road_trade');
+addDep('dep-sogdian-tang', 'node-asia-sogdian', 'node-tang-dynasty', 'cultural_exchange');
+addDep('dep-tang-talas', 'node-tang-dynasty', 'node-asia-talas', 'clash_of_civilizations');
+addDep('dep-mongol-song', 'node-asia-mongol-conquest', 'node-song-dynasty', 'conquest');
 
 // 3. Central Asia <-> Europe
-insertDep.run('dep-talas-europe', 'node-asia-talas', 'node-europe-charlemagne', 'paper_tech_transfer');
-insertDep.run('dep-crusade-asia', 'node-europe-first-crusade', 'node-asia-samani-karakhanid', 'geopolitical_shift');
-insertDep.run('dep-mongol-europe', 'node-asia-mongol-conquest', 'node-europe-magna-carta', 'pax_mongolica_era');
+addDep('dep-talas-europe', 'node-asia-talas', 'node-europe-charlemagne', 'paper_tech_transfer');
+addDep('dep-crusade-asia', 'node-europe-first-crusade', 'node-asia-samani-karakhanid', 'geopolitical_shift');
+addDep('dep-mongol-europe', 'node-asia-mongol-conquest', 'node-europe-magna-carta', 'pax_mongolica_era');
 
 // 4. Mongolia <-> China & Europe & Japan
-insertDep.run('dep-mgl-jin-song', 'node-mgl-jurchen-jin', 'node-song-dynasty', 'border_warfare');
-insertDep.run('dep-mgl-song-fall', 'node-mgl-kublai-yuan', 'node-song-dynasty', 'conquest');
-insertDep.run('dep-mgl-west-europe', 'node-mgl-western-campaign', 'node-europe-magna-carta', 'geopolitical_shockwave');
-insertDep.run('dep-mgl-yuan-japan', 'node-mgl-kublai-yuan', 'node-jp-mongol-invasions', 'naval_invasion');
+addDep('dep-mgl-jin-song', 'node-mgl-jurchen-jin', 'node-song-dynasty', 'border_warfare');
+addDep('dep-mgl-song-fall', 'node-mgl-kublai-yuan', 'node-song-dynasty', 'conquest');
+addDep('dep-mgl-west-europe', 'node-mgl-western-campaign', 'node-europe-magna-carta', 'geopolitical_shockwave');
+addDep('dep-mgl-yuan-japan', 'node-mgl-kublai-yuan', 'node-jp-mongol-invasions', 'naval_invasion');
 
 // 5. Japan <-> China
-insertDep.run('dep-jp-sui-asuka', 'node-sui-dynasty', 'node-jp-asuka-shotoku', 'diplomatic_mission');
-insertDep.run('dep-jp-tang-taika', 'node-tang-dynasty', 'node-jp-taika-reforms', 'legal_cultural_model');
+addDep('dep-jp-sui-asuka', 'node-sui-dynasty', 'node-jp-asuka-shotoku', 'diplomatic_mission');
+addDep('dep-jp-tang-taika', 'node-tang-dynasty', 'node-jp-taika-reforms', 'legal_cultural_model');
 
 // 6. Korea <-> China & Mongolia & Japan
-insertDep.run('dep-sui-goguryeo', 'node-sui-dynasty', 'node-kr-goguryeo-sui-war', 'salsu_defense');
-insertDep.run('dep-tang-silla', 'node-tang-dynasty', 'node-kr-unified-silla', 'silla_tang_alliance');
-insertDep.run('dep-mgl-goryeo', 'node-mgl-western-campaign', 'node-kr-goryeo-mongol-war', 'ganghwa_defense');
-insertDep.run('dep-goryeo-japan', 'node-kr-goryeo-mongol-war', 'node-jp-mongol-invasions', 'staging_ground');
+addDep('dep-sui-goguryeo', 'node-sui-dynasty', 'node-kr-goguryeo-sui-war', 'salsu_defense');
+addDep('dep-tang-silla', 'node-tang-dynasty', 'node-kr-unified-silla', 'silla_tang_alliance');
+addDep('dep-mgl-goryeo', 'node-mgl-western-campaign', 'node-kr-goryeo-mongol-war', 'ganghwa_defense');
+addDep('dep-goryeo-japan', 'node-kr-goryeo-mongol-war', 'node-jp-mongol-invasions', 'staging_ground');
 
 // 7. Thailand <-> Southeast Asia & Yuan
-insertDep.run('dep-th-yuan-tribute', 'node-mgl-kublai-yuan', 'node-th-ram-khamhaeng', 'diplomatic_trade');
-insertDep.run('dep-vn-th-regional', 'node-ly-thuong-kiet', 'node-th-lopburi-khmer', 'regional_balance');
+addDep('dep-th-yuan-tribute', 'node-mgl-kublai-yuan', 'node-th-ram-khamhaeng', 'diplomatic_trade');
+addDep('dep-vn-th-regional', 'node-ly-thuong-kiet', 'node-th-lopburi-khmer', 'regional_balance');
 
-console.log('Successfully seeded 8 historical timelines into proj-historical:');
-console.log('  1. Trung Hoa (track-china) - 9 nodes');
-console.log('  2. Việt Nam (track-vietnam) - 12 nodes');
-console.log('  3. Châu Âu (track-europe) - 9 nodes');
-console.log('  4. Trung Á (track-central-asia) - 7 nodes');
-console.log('  5. Mông Cổ (track-mongolia) - 7 nodes');
-console.log('  6. Nhật Bản (track-japan) - 8 nodes');
-console.log('  7. Triều Tiên (track-korea) - 7 nodes');
-console.log('  8. Thái Lan (track-thailand) - 7 nodes');
-console.log('Total nodes: 66, total cross-timeline dependencies: 26');
+
+
+async function main() {
+  console.log('Connecting to database:', url.startsWith('file:') ? url : url.replace(/:[^:@]*@/, ':***@'));
+  
+  // Create schema if needed
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      color TEXT DEFAULT 'indigo',
+      icon TEXT DEFAULT 'folder',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS timelines (
+      id TEXT PRIMARY KEY,
+      project_id TEXT,
+      title TEXT NOT NULL,
+      description TEXT,
+      color TEXT DEFAULT 'default',
+      parent_timeline_id TEXT,
+      branch_point_node_id TEXT,
+      order_index INTEGER DEFAULT 0,
+      is_archived INTEGER DEFAULT 0,
+      is_visible INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS nodes (
+      id TEXT PRIMARY KEY,
+      timeline_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      status TEXT DEFAULT 'planned',
+      priority TEXT DEFAULT 'medium',
+      order_index INTEGER DEFAULT 0,
+      tags TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS dependencies (
+      id TEXT PRIMARY KEY,
+      from_node_id TEXT NOT NULL,
+      to_node_id TEXT NOT NULL,
+      type TEXT DEFAULT 'blocks',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  await db.execute({
+    sql: 'INSERT OR IGNORE INTO projects (id, name, description, color, icon) VALUES (?, ?, ?, ?, ?)',
+    args: ['proj-historical', 'Historical Chronology (Lịch Sử)', 'Comparative dynasties, civilizational milestones, and historical clashes', 'amber', '📜']
+  });
+
+  console.log(`Seeding ${statements.length} items (timelines, nodes, dependencies)...`);
+
+  for (let i = 0; i < statements.length; i += 50) {
+    const chunk = statements.slice(i, i + 50);
+    await db.batch(chunk, 'write');
+  }
+
+  console.log('Successfully seeded 8 historical timelines into proj-historical!');
+  console.log('Total nodes: 66, total cross-timeline dependencies: 26');
+}
+
+main().catch(err => {
+  console.error('Seeding failed:', err);
+  process.exit(1);
+});

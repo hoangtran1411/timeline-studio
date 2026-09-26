@@ -1,26 +1,35 @@
-import { DatabaseSync } from 'node:sqlite';
+import { createClient, Client } from '@libsql/client';
 import path from 'node:path';
 import fs from 'node:fs';
 
-const dataDir = path.join(process.cwd(), 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+let _client: Client | null = null;
+let _schemaInitialized = false;
 
-const dbPath = path.join(dataDir, 'timeline.db');
+export function getDb(): Client {
+  if (!_client) {
+    const isCloud = !!process.env.TURSO_DATABASE_URL;
+    let url = process.env.TURSO_DATABASE_URL;
 
-let _db: DatabaseSync | null = null;
+    if (!isCloud) {
+      const dataDir = path.join(process.cwd(), 'data');
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      url = `file:${path.join(dataDir, 'timeline.db').replace(/\\/g, '/')}`;
+    }
 
-export function getDb(): DatabaseSync {
-  if (!_db) {
-    _db = new DatabaseSync(dbPath);
-    initSchema(_db);
+    _client = createClient({
+      url: url!,
+      authToken: process.env.TURSO_AUTH_TOKEN
+    });
   }
-  return _db;
+  return _client;
 }
 
-function initSchema(db: DatabaseSync) {
-  db.exec(`
+export async function ensureSchema(db: Client = getDb()): Promise<void> {
+  if (_schemaInitialized) return;
+
+  await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -75,330 +84,205 @@ function initSchema(db: DatabaseSync) {
   `);
 
   // Run column migration for existing databases
-  const columns = db.prepare('PRAGMA table_info(timelines)').all() as Array<{ name: string }>;
-  const colNames = new Set(columns.map(c => c.name));
-  if (!colNames.has('is_archived')) {
-    db.exec('ALTER TABLE timelines ADD COLUMN is_archived INTEGER DEFAULT 0');
-  }
-  if (!colNames.has('is_visible')) {
-    db.exec('ALTER TABLE timelines ADD COLUMN is_visible INTEGER DEFAULT 1');
-  }
-  if (!colNames.has('project_id')) {
-    db.exec('ALTER TABLE timelines ADD COLUMN project_id TEXT');
+  try {
+    const columnsRes = await db.execute('PRAGMA table_info(timelines)');
+    const colNames = new Set(columnsRes.rows.map(c => String(c.name)));
+    if (!colNames.has('is_archived')) {
+      await db.execute('ALTER TABLE timelines ADD COLUMN is_archived INTEGER DEFAULT 0');
+    }
+    if (!colNames.has('is_visible')) {
+      await db.execute('ALTER TABLE timelines ADD COLUMN is_visible INTEGER DEFAULT 1');
+    }
+    if (!colNames.has('project_id')) {
+      await db.execute('ALTER TABLE timelines ADD COLUMN project_id TEXT');
+    }
+  } catch (err) {
+    console.warn('Column check warning:', err);
   }
 
   // Seed default projects if projects table is empty
-  const projectCount = (db.prepare('SELECT COUNT(*) as count FROM projects').get() as { count: number }).count;
+  const projectCountRes = await db.execute('SELECT COUNT(*) as count FROM projects');
+  const projectCount = Number(projectCountRes.rows[0]?.count ?? 0);
   if (projectCount === 0) {
-    seedProjects(db);
+    await seedProjects(db);
   }
 
   // Ensure any existing timelines are assigned to the historical project
-  db.exec("UPDATE timelines SET project_id = 'proj-historical' WHERE project_id IS NULL");
+  await db.execute("UPDATE timelines SET project_id = 'proj-historical' WHERE project_id IS NULL");
 
   // Normalize project icons if they were saved as raw text names
-  db.exec(`
+  await db.executeMultiple(`
     UPDATE projects SET icon = '📜' WHERE icon = 'landmark' OR icon = 'history';
     UPDATE projects SET icon = '💡' WHERE icon = 'lightbulb' OR icon = 'idea';
   `);
 
   // Seed default data if timelines table is empty
-  const count = (db.prepare('SELECT COUNT(*) as count FROM timelines').get() as { count: number }).count;
+  const timelineCountRes = await db.execute('SELECT COUNT(*) as count FROM timelines');
+  const count = Number(timelineCountRes.rows[0]?.count ?? 0);
   if (count === 0) {
-    seedDefaultData(db);
+    await seedDefaultData(db);
   }
+
+  _schemaInitialized = true;
 }
 
-function seedProjects(db: DatabaseSync) {
-  const insertProject = db.prepare(`
-    INSERT INTO projects (id, name, description, color, icon)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-
-  insertProject.run(
-    'proj-historical',
-    'Historical Chronology (Lịch Sử)',
-    'Comparative dynasties, civilizational milestones, and historical clashes',
-    'amber',
-    '📜'
-  );
-
-  insertProject.run(
-    'proj-ideas',
-    'Product Ideas & Roadmap (Ý Tưởng)',
-    'Product brainstorming, startup experiments, feature architectures, and marketing plans',
-    'emerald',
-    '💡'
-  );
-
-  // Seed sample idea track inside proj-ideas
-  const insertTimeline = db.prepare(`
-    INSERT INTO timelines (id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const insertNode = db.prepare(`
-    INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  insertTimeline.run(
-    'track-idea-core',
-    'proj-ideas',
-    'AI Timeline Studio Platform v2.0',
-    'Architecture and key features for next-gen timeline workspace',
-    'emerald',
-    null,
-    null,
-    0
-  );
-
-  insertTimeline.run(
-    'track-idea-growth',
-    'proj-ideas',
-    'Growth & Launch Experiments',
-    'Community engagement, developer showcase, and interactive demo templates',
-    'teal',
-    null,
-    null,
-    1
-  );
-
-  insertNode.run(
-    'node-idea-multiproject',
-    'track-idea-core',
-    'Multi-Project Workspace Architecture',
-    'Separation of concerns between historical timelines, personal workflows, and tech roadmaps',
-    '2026-10-01',
-    '2026-10-18',
-    'in_progress',
-    'high',
-    0,
-    '#core,#workspace'
-  );
-
-  insertNode.run(
-    'node-idea-export',
-    'track-idea-core',
-    'High-Res PNG / SVG / Markdown Exporter',
-    'Export interactive visual timelines into presentation decks and documentation',
-    '2026-10-25',
-    '2026-11-12',
-    'planned',
-    'medium',
-    1,
-    '#export,#canvas'
-  );
-
-  insertNode.run(
-    'node-idea-showcase',
-    'track-idea-growth',
-    'Open Source Developer Showcase',
-    'Interactive historical and technical timeline templates for the developer community',
-    '2026-10-15',
-    '2026-10-30',
-    'planned',
-    'high',
-    0,
-    '#growth,#launch'
-  );
+async function seedProjects(db: Client) {
+  await db.batch([
+    {
+      sql: `INSERT INTO projects (id, name, description, color, icon) VALUES (?, ?, ?, ?, ?)`,
+      args: [
+        'proj-historical',
+        'Historical Chronology (Lịch Sử)',
+        'Comparative dynasties, civilizational milestones, and historical clashes',
+        'amber',
+        '📜'
+      ]
+    },
+    {
+      sql: `INSERT INTO projects (id, name, description, color, icon) VALUES (?, ?, ?, ?, ?)`,
+      args: [
+        'proj-ideas',
+        'Product Ideas & Roadmap (Ý Tưởng)',
+        'Product brainstorming, startup experiments, feature architectures, and marketing plans',
+        'emerald',
+        '💡'
+      ]
+    },
+    {
+      sql: `INSERT INTO timelines (id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        'track-idea-core',
+        'proj-ideas',
+        'AI Timeline Studio Platform v2.0',
+        'Architecture and key features for next-gen timeline workspace',
+        'emerald',
+        null,
+        null,
+        0
+      ]
+    },
+    {
+      sql: `INSERT INTO timelines (id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        'track-idea-growth',
+        'proj-ideas',
+        'Growth & Launch Experiments',
+        'Community engagement, developer showcase, and interactive demo templates',
+        'teal',
+        null,
+        null,
+        1
+      ]
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        'node-idea-multiproject',
+        'track-idea-core',
+        'Multi-Project Workspace Architecture',
+        'Separation of concerns between historical timelines, personal workflows, and tech roadmaps',
+        '2026-10-01',
+        '2026-10-18',
+        'in_progress',
+        'high',
+        0,
+        '#core,#workspace'
+      ]
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        'node-idea-export',
+        'track-idea-core',
+        'High-Res PNG / SVG / Markdown Exporter',
+        'Export interactive visual timelines into presentation decks and documentation',
+        '2026-10-25',
+        '2026-11-12',
+        'planned',
+        'medium',
+        1,
+        '#export,#canvas'
+      ]
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        'node-idea-showcase',
+        'track-idea-growth',
+        'Open Source Developer Showcase',
+        'Interactive historical and technical timeline templates for the developer community',
+        '2026-10-15',
+        '2026-10-30',
+        'planned',
+        'high',
+        0,
+        '#growth,#launch'
+      ]
+    }
+  ]);
 }
 
-function seedDefaultData(db: DatabaseSync) {
-  const insertTimeline = db.prepare(`
-    INSERT INTO timelines (id, title, description, color, parent_timeline_id, branch_point_node_id, order_index)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const insertNode = db.prepare(`
-    INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const insertDep = db.prepare(`
-    INSERT INTO dependencies (id, from_node_id, to_node_id, type)
-    VALUES (?, ?, ?, ?)
-  `);
-
-  // Track 1: Main Roadmap
-  insertTimeline.run(
-    'track-main',
-    'Main Roadmap (Core v1.0)',
-    'Primary development track for core platform features',
-    'zinc',
-    null,
-    null,
-    0
-  );
-
-  // Track 2: Competitor Tracking (Independent)
-  insertTimeline.run(
-    'track-competitor',
-    'Competitor Benchmark (TechNova)',
-    'External market release tracking and comparative milestones',
-    'stone',
-    null,
-    null,
-    1
-  );
-
-  // Track 3: Branch from Track 1 (Marketing / Feature branch)
-  insertTimeline.run(
-    'track-branch-gtm',
-    'Go-To-Market & Launch (Branch from Alpha)',
-    'Branched off Alpha testing for PR, media rollout, and beta access',
-    'neutral',
-    'track-main',
-    'node-alpha',
-    2
-  );
-
-  // Track 1 Nodes
-  insertNode.run(
-    'node-research',
-    'track-main',
-    'Market Research & UX Prototyping',
-    'Wireframes and user feedback interviews',
-    '2026-07-12',
-    '2026-07-28',
-    'completed',
-    'medium',
-    0,
-    '#ux,#research'
-  );
-
-  insertNode.run(
-    'node-core-api',
-    'track-main',
-    'Core Architecture & Microservices',
-    'Database modeling, auth and high-throughput pipelines',
-    '2026-08-05',
-    '2026-08-25',
-    'completed',
-    'high',
-    1,
-    '#backend,#api'
-  );
-
-  insertNode.run(
-    'node-alpha',
-    'track-main',
-    'Internal Alpha Testing (Closed)',
-    'End-to-end dogfooding with security regression audit',
-    '2026-09-15',
-    '2026-10-10',
-    'in_progress',
-    'high',
-    2,
-    '#qa,#release'
-  );
-
-  insertNode.run(
-    'node-public-beta',
-    'track-main',
-    'Public Beta Release',
-    'Early access program for 5,000 waitlisted teams',
-    '2026-10-20',
-    '2026-11-15',
-    'planned',
-    'high',
-    3,
-    '#beta,#product'
-  );
-
-  insertNode.run(
-    'node-launch',
-    'track-main',
-    'Official Global Launch v1.0',
-    'General availability rollout',
-    '2026-12-05',
-    null,
-    'planned',
-    'high',
-    4,
-    '#milestone'
-  );
-
-  // Track 2 Nodes (Competitor)
-  insertNode.run(
-    'node-comp-ai',
-    'track-competitor',
-    'Competitor AI Teaser',
-    'Prototype announcement made at tech conference',
-    '2026-08-15',
-    null,
-    'completed',
-    'low',
-    0,
-    '#competitor,#ai'
-  );
-
-  insertNode.run(
-    'node-comp-pricing',
-    'track-competitor',
-    'Enterprise Price Hike (+15%)',
-    'Opens window for mid-market acquisition',
-    '2026-10-01',
-    null,
-    'completed',
-    'medium',
-    1,
-    '#pricing'
-  );
-
-  insertNode.run(
-    'node-comp-summit',
-    'track-competitor',
-    'Competitor Annual Summit',
-    'Expected announcement of competitor v2.0',
-    '2026-11-18',
-    null,
-    'planned',
-    'medium',
-    2,
-    '#conference'
-  );
-
-  // Track 3 Nodes (Branch)
-  insertNode.run(
-    'node-teaser',
-    'track-branch-gtm',
-    'Teaser & Awareness Campaign',
-    'Social preview and developer waitlist signups',
-    '2026-09-10',
-    '2026-09-30',
-    'completed',
-    'medium',
-    0,
-    '#gtm,#social'
-  );
-
-  insertNode.run(
-    'node-kol-press',
-    'track-branch-gtm',
-    'Press Briefing & Tech Reviews',
-    'Embargoed reviews with key industry analysts',
-    '2026-10-25',
-    null,
-    'planned',
-    'high',
-    1,
-    '#press,#reviews'
-  );
-
-  insertNode.run(
-    'node-early-bird',
-    'track-branch-gtm',
-    'Early-Bird Launch Offer',
-    'Special early-adopter tier launch campaign',
-    '2026-11-24',
-    '2026-11-30',
-    'planned',
-    'medium',
-    2,
-    '#campaign'
-  );
-
-  // Dependency: Alpha testing must pass before Press Briefing
-  insertDep.run('dep-1', 'node-alpha', 'node-kol-press', 'blocks');
+async function seedDefaultData(db: Client) {
+  await db.batch([
+    {
+      sql: `INSERT INTO timelines (id, title, description, color, parent_timeline_id, branch_point_node_id, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: ['track-main', 'Main Roadmap (Core v1.0)', 'Primary development track for core platform features', 'zinc', null, null, 0]
+    },
+    {
+      sql: `INSERT INTO timelines (id, title, description, color, parent_timeline_id, branch_point_node_id, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: ['track-competitor', 'Competitor Benchmark (TechNova)', 'External market release tracking and comparative milestones', 'stone', null, null, 1]
+    },
+    {
+      sql: `INSERT INTO timelines (id, title, description, color, parent_timeline_id, branch_point_node_id, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: ['track-branch-gtm', 'Go-To-Market & Launch (Branch from Alpha)', 'Branched off Alpha testing for PR, media rollout, and beta access', 'neutral', 'track-main', 'node-alpha', 2]
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-research', 'track-main', 'Market Research & UX Prototyping', 'Wireframes and user feedback interviews', '2026-07-12', '2026-07-28', 'completed', 'medium', 0, '#ux,#research']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-core-api', 'track-main', 'Core Architecture & Microservices', 'Database modeling, auth and high-throughput pipelines', '2026-08-05', '2026-08-25', 'completed', 'high', 1, '#backend,#api']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-alpha', 'track-main', 'Internal Alpha Testing (Closed)', 'End-to-end dogfooding with security regression audit', '2026-09-15', '2026-10-10', 'in_progress', 'high', 2, '#qa,#release']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-public-beta', 'track-main', 'Public Beta Release', 'Early access program for 5,000 waitlisted teams', '2026-10-20', '2026-11-15', 'planned', 'high', 3, '#beta,#product']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-launch', 'track-main', 'Official Global Launch v1.0', 'General availability rollout', '2026-12-05', null, 'planned', 'high', 4, '#milestone']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-comp-ai', 'track-competitor', 'Competitor AI Teaser', 'Prototype announcement made at tech conference', '2026-08-15', null, 'completed', 'low', 0, '#competitor,#ai']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-comp-pricing', 'track-competitor', 'Enterprise Price Hike (+15%)', 'Opens window for mid-market acquisition', '2026-10-01', null, 'completed', 'medium', 1, '#pricing']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-comp-summit', 'track-competitor', 'Competitor Annual Summit', 'Expected announcement of competitor v2.0', '2026-11-18', null, 'planned', 'medium', 2, '#conference']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-teaser', 'track-branch-gtm', 'Teaser & Awareness Campaign', 'Social preview and developer waitlist signups', '2026-09-10', '2026-09-30', 'completed', 'medium', 0, '#gtm,#social']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-kol-press', 'track-branch-gtm', 'Press Briefing & Tech Reviews', 'Embargoed reviews with key industry analysts', '2026-10-25', null, 'planned', 'high', 1, '#press,#reviews']
+    },
+    {
+      sql: `INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: ['node-early-bird', 'track-branch-gtm', 'Early-Bird Launch Offer', 'Special early-adopter tier launch campaign', '2026-11-24', '2026-11-30', 'planned', 'medium', 2, '#campaign']
+    },
+    {
+      sql: `INSERT INTO dependencies (id, from_node_id, to_node_id, type) VALUES (?, ?, ?, ?)`,
+      args: ['dep-1', 'node-alpha', 'node-kol-press', 'blocks']
+    }
+  ]);
 }

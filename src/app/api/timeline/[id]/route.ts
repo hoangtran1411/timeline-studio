@@ -8,7 +8,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    updateTimeline(id, body);
+    await updateTimeline(id, body);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to update timeline:', error);
@@ -23,7 +23,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    deleteTimeline(id);
+    await deleteTimeline(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete timeline:', error);

@@ -3,7 +3,7 @@ import { getProjects, createProject } from '@/lib/timeline-service';
 
 export async function GET() {
   try {
-    const projects = getProjects();
+    const projects = await getProjects();
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Failed to get projects:', error);
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     if (!body.name) {
       return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
     }
-    const project = createProject({
+    const project = await createProject({
       name: body.name,
       description: body.description,
       color: body.color,
