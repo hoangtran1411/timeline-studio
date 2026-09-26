@@ -194,10 +194,96 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     return Math.max(210, 210 + maxLane * 130);
   }, []);
 
+  // Dynamically assign visual collision lanes based on actual card pixel positions & widths
+  const computedTimelines: TimelineTrack[] = useMemo(() => {
+    const MAX_STAGGER_LANES = 3; // Allows lane 0, lane 1, lane 2 (staggered dropdowns)
+
+    return timelines.map((track) => {
+      // Sort nodes chronologically with tie-breaker
+      const sortedNodes = [...track.nodes].sort((a, b) => {
+        const diff = compareDateStrings(a.startDate, b.startDate);
+        if (diff !== 0) return diff;
+        if (a.endDate && b.endDate) {
+          const endDiff = compareDateStrings(a.endDate, b.endDate);
+          if (endDiff !== 0) return endDiff;
+        }
+        return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+      });
+
+      // Track the rightmost pixel boundary of each lane
+      const laneEndPixels: number[] = [];
+
+      const assignedNodes = sortedNodes.map((node) => {
+        const startX = dateToPixelX(node.startDate, originDate, pxPerDay);
+        let nodeWidth = 160;
+        if (node.endDate) {
+          const endX = dateToPixelX(node.endDate, originDate, pxPerDay);
+          nodeWidth = Math.max(160, Math.min(360, endX - startX + 160));
+        }
+
+        // Check custom card width saved in localStorage
+        if (typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem('timeline_studio_card_widths');
+            if (raw) {
+              const map = JSON.parse(raw);
+              if (typeof map[node.id] === 'number') {
+                nodeWidth = Math.max(160, Math.min(900, map[node.id]));
+              }
+            }
+          } catch (_) {}
+        }
+
+        const endX = startX + nodeWidth;
+        const requiredSpacing = 24; // 24px clean visual margin between cards in the same lane
+
+        // Find the lowest lane where this card fits without overlapping
+        let placedLane = -1;
+        for (let i = 0; i < laneEndPixels.length && i < MAX_STAGGER_LANES; i++) {
+          if (laneEndPixels[i] + requiredSpacing <= startX) {
+            placedLane = i;
+            laneEndPixels[i] = endX;
+            break;
+          }
+        }
+
+        // If no existing lane fits and we haven't reached MAX_STAGGER_LANES, drop down to the next lane
+        if (placedLane === -1) {
+          if (laneEndPixels.length < MAX_STAGGER_LANES) {
+            placedLane = laneEndPixels.length;
+            laneEndPixels.push(endX);
+          } else {
+            // Find the lane with the earliest end pixel and place there
+            let earliestLane = 0;
+            let minEnd = laneEndPixels[0];
+            for (let i = 1; i < laneEndPixels.length; i++) {
+              if (laneEndPixels[i] < minEnd) {
+                minEnd = laneEndPixels[i];
+                earliestLane = i;
+              }
+            }
+            placedLane = earliestLane;
+            laneEndPixels[earliestLane] = Math.max(laneEndPixels[earliestLane], endX);
+          }
+        }
+
+        return {
+          ...node,
+          lane: placedLane
+        };
+      });
+
+      return {
+        ...track,
+        nodes: assignedNodes
+      };
+    });
+  }, [timelines, originDate, pxPerDay]);
+
   // Filter visible tracks for canvas rendering
   const visibleTimelines: TimelineTrack[] = useMemo(() => {
-    return timelines.filter((t: TimelineTrack) => t.isVisible !== false);
-  }, [timelines]);
+    return computedTimelines.filter((t: TimelineTrack) => t.isVisible !== false);
+  }, [computedTimelines]);
 
   const getTrackTopOffset = useCallback((trackIndex: number): number => {
     let offset = 64; // height of top ruler
@@ -347,7 +433,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     <div className="relative w-full flex-1 flex overflow-hidden min-h-[280px] bg-[#101114] border-b border-[#222328]">
       {/* Left Dock: Track names, branch metadata, controls */}
       <LeftTrackDock
-        timelines={timelines}
+        timelines={computedTimelines}
         width={sidebarWidth}
         onAddNodeToTrack={(id) => onAddNodeToTrack(id)}
         onBranchTrack={(id) => onBranchTrack(id)}
@@ -445,16 +531,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
               const isSelectedTrack = selectedTrackId === track.id;
               const isHoveredTrack = hoveredTrackId === track.id;
 
-              // Sort nodes chronologically with tie-breaker so z-index and DOM ordering are deterministic
-              const sortedNodes = [...track.nodes].sort((a, b) => {
-                const diff = compareDateStrings(a.startDate, b.startDate);
-                if (diff !== 0) return diff;
-                if (a.endDate && b.endDate) {
-                  const endDiff = compareDateStrings(a.endDate, b.endDate);
-                  if (endDiff !== 0) return endDiff;
-                }
-                return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
-              });
+              // Pre-sorted and collision-assigned nodes
+              const sortedNodes = track.nodes;
 
               return (
                 <div
@@ -504,7 +582,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                     );
                   })}
 
-                  {/* Render Node Cards in chronological order with ascending z-index */}
+                  {/* Render Node Cards with lane-prioritized and chronological z-index */}
                   {sortedNodes.map((node, chronoIndex) => {
                     const startX = dateToPixelX(node.startDate, originDate, pxPerDay);
                     let nodeWidth = 160;
@@ -512,6 +590,12 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                       const endX = dateToPixelX(node.endDate, originDate, pxPerDay);
                       nodeWidth = Math.max(160, Math.min(360, endX - startX + 160));
                     }
+
+                    // Layering base: Upper lanes (lane 0) MUST have higher z-index than lower lanes (lane 1, 2)
+                    // so that hanger stems extending down to lower lanes pass cleanly BEHIND upper lane cards.
+                    // Within the same lane, chronologically later cards layer slightly higher.
+                    const laneBaseZ = (10 - Math.min(node.lane || 0, 9)) * 10000;
+                    const cardZIndex = laneBaseZ + chronoIndex;
 
                     return (
                       <TimelineNodeCard
@@ -521,7 +605,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                         pixelWidth={nodeWidth}
                         lane={node.lane || 0}
                         pxPerDay={pxPerDay}
-                        zIndex={10 + chronoIndex}
+                        zIndex={cardZIndex}
                         isSelected={selectedNode?.id === node.id}
                         onSelect={onSelectNode}
                         onAddAfter={(n) => {
