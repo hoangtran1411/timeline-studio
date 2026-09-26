@@ -1,9 +1,14 @@
 const { createClient } = require('@libsql/client');
 const path = require('node:path');
 
-const url = process.env.TURSO_DATABASE_URL || ('file:' + path.join(process.cwd(), 'data', 'timeline.db').replace(/\\/g, '/'));
-const authToken = process.env.TURSO_AUTH_TOKEN;
+let rawUrl = process.env.TURSO_DATABASE_URL?.trim().replace(/^["']|["']$/g, '');
+const authToken = process.env.TURSO_AUTH_TOKEN?.trim().replace(/^["']|["']$/g, '');
 
+if (rawUrl && rawUrl.endsWith('/')) {
+  rawUrl = rawUrl.slice(0, -1);
+}
+
+const url = rawUrl || ('file:' + path.join(process.cwd(), 'data', 'timeline.db').replace(/\\/g, '/'));
 const db = createClient({ url, authToken });
 
 const statements = [];

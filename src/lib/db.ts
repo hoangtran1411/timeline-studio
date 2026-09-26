@@ -7,8 +7,36 @@ let _schemaInitialized = false;
 
 export function getDb(): Client {
   if (!_client) {
-    const isCloud = !!process.env.TURSO_DATABASE_URL;
-    let url = process.env.TURSO_DATABASE_URL;
+    let rawUrl = process.env.TURSO_DATABASE_URL?.trim().replace(/^["']|["']$/g, '');
+    const token = process.env.TURSO_AUTH_TOKEN?.trim().replace(/^["']|["']$/g, '');
+
+    if (rawUrl && rawUrl.endsWith('/')) {
+      rawUrl = rawUrl.slice(0, -1);
+    }
+
+    const isPlaceholder = rawUrl && (
+      rawUrl.includes('your-db-name') ||
+      rawUrl.includes('your-username') ||
+      rawUrl === 'libsql://' ||
+      rawUrl === 'https://'
+    );
+
+    const isDashboardUrl = rawUrl && (
+      rawUrl.includes('turso.tech/app') ||
+      rawUrl.includes('app.turso.tech') ||
+      rawUrl === 'https://turso.tech' ||
+      rawUrl === 'http://turso.tech'
+    );
+
+    if (isDashboardUrl) {
+      console.error(
+        '[Turso Configuration Error] TURSO_DATABASE_URL points to the web dashboard (turso.tech) instead of your database URL.\n' +
+        'Please use your database connection URL (e.g., libsql://<db-name>-<org>.turso.io).'
+      );
+    }
+
+    const isCloud = !!rawUrl && !isPlaceholder && !isDashboardUrl;
+    let url = rawUrl;
 
     if (!isCloud) {
       const dataDir = path.join(process.cwd(), 'data');
@@ -20,7 +48,7 @@ export function getDb(): Client {
 
     _client = createClient({
       url: url!,
-      authToken: process.env.TURSO_AUTH_TOKEN
+      authToken: token
     });
   }
   return _client;
