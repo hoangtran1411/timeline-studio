@@ -67,6 +67,54 @@ insertTimeline.run(
   3
 );
 
+// 5. Timeline 5: Mông Cổ (Thảo Nguyên Du Mục & Đại Hãn Quốc)
+insertTimeline.run(
+  'track-mongolia',
+  'proj-historical',
+  'Mông Cổ: Các Bộ Lạc Thảo Nguyên & Đại Hãn Quốc (200 TCN – 1294 SCN)',
+  'Từ các bộ lạc du mục Đông Hồ, Nhu Nhu, Liêu, Kim đến Thành Cát Tư Hãn và Hốt Tất Liệt lập nhà Nguyên',
+  'purple',
+  null,
+  null,
+  4
+);
+
+// 6. Timeline 6: Nhật Bản (Yayoi -> Kamakura)
+insertTimeline.run(
+  'track-japan',
+  'proj-historical',
+  'Nhật Bản: Từ Thời Yayoi Đến Thời Kỳ Kamakura (200 TCN – 1285 SCN)',
+  'Văn hóa lúa nước Yayoi, lăng mộ Kofun, Cải cách Taika, thời kỳ Heian rực rỡ và Mạc phủ Kamakura đánh bại quân Nguyên Mông',
+  'rose',
+  null,
+  null,
+  5
+);
+
+// 7. Timeline 7: Triều Tiên / Hàn Quốc (Cổ Triều Tiên -> Tam Quốc -> Cao Ly)
+insertTimeline.run(
+  'track-korea',
+  'proj-historical',
+  'Triều Tiên: Cổ Triều Tiên, Tam Quốc & Cao Ly (194 TCN – 1290 SCN)',
+  'Từ thời Vệ Mãn Triều Tiên, thời kỳ Tam Quốc (Goguryeo, Baekje, Silla), Silla thống nhất đến Vương triều Goryeo (Cao Ly)',
+  'blue',
+  null,
+  null,
+  6
+);
+
+// 8. Timeline 8: Thái Lan (Ban Chiang -> Dvaravati -> Sukhothai)
+insertTimeline.run(
+  'track-thailand',
+  'proj-historical',
+  'Thái Lan: Từ Văn Hóa Ban Chiang, Dvaravati Đến Sukhothai (200 TCN – 1296 SCN)',
+  'Từ văn hóa đồ đồng Ban Chiang, các vương quốc Môn Dvaravati, Hariphunchai đến Vương triều Sukhothai và Lan Na',
+  'orange',
+  null,
+  null,
+  7
+);
+
 // Nodes for Timeline 1: China
 const chinaNodes = [
   [
@@ -527,11 +575,379 @@ const centralAsiaNodes = [
   ]
 ];
 
-// Insert nodes for all 4 timelines
+// Nodes for Timeline 5: Mongolia
+const mongoliaNodes = [
+  [
+    'node-mgl-donghu',
+    'track-mongolia',
+    'Các Bộ Lạc Đông Hồ & Tiên Ty (200 TCN – 200 SCN)',
+    'Các bộ tộc du mục Đông Hồ, Ô Hoàn và Tiên Ty phát triển mạnh mẽ trên đồng cỏ Mông Cổ và dãy Đại Hưng An',
+    '-0200-01-01',
+    '0200-01-01',
+    'completed',
+    'medium',
+    0,
+    '#dongho,#tienty,#thaonguyen'
+  ],
+  [
+    'node-mgl-rouran',
+    'track-mongolia',
+    'Nhu Nhu Khả Hãn Quốc (330–555)',
+    'Người Nhu Nhu (Rouran) thống trị cao nguyên Mông Cổ, là nhà nước du mục đầu tiên sử dụng danh xưng Khả Hãn (Khagan)',
+    '0330-01-01',
+    '0555-01-01',
+    'completed',
+    'medium',
+    1,
+    '#nhunhu,#rouran,#khahan'
+  ],
+  [
+    'node-mgl-khitan-liao',
+    'track-mongolia',
+    'Đế Quốc Khiết Đan (Nhà Liêu) (916–1125)',
+    'Gia Luật A Bảo Cơ thống nhất các bộ tộc Khiết Đan lập nhà Liêu, kiểm soát thảo nguyên Mông Cổ và 16 châu Yên Vân',
+    '0916-03-17',
+    '1125-03-26',
+    'completed',
+    'high',
+    2,
+    '#khietdan,#nhalieu,#yenvan'
+  ],
+  [
+    'node-mgl-jurchen-jin',
+    'track-mongolia',
+    'Nhà Kim Của Người Nữ Chân (1115–1234)',
+    'Hoàn Nhan A Cốt Đả khởi binh diệt Liêu, chiếm Biện Kinh (Bắc Tống), kiểm soát toàn bộ miền bắc Trung Hoa và bắt Mông Cổ triều cống',
+    '1115-01-28',
+    '1234-02-09',
+    'completed',
+    'high',
+    3,
+    '#nuchan,#nhakim,#hoannhanacotda'
+  ],
+  [
+    'node-mgl-kurultai-1206',
+    'track-mongolia',
+    'Đại Hội Kurultai & Thiết Mộc Chân Xưng Thành Cát Tư Hãn (1206)',
+    'Thiết Mộc Chân thống nhất toàn bộ các bộ lạc thảo nguyên Mông Cổ, được tôn xưng Thành Cát Tư Hãn, ban hành đại luật Yassa',
+    '1206-03-01',
+    '1206-05-01',
+    'completed',
+    'high',
+    4,
+    '#kurultai,#genghiskhan,#thietmocchan,#yassa'
+  ],
+  [
+    'node-mgl-western-campaign',
+    'track-mongolia',
+    'Chiến Dịch Tây Chinh Chấn Động Á - Âu (1219–1242)',
+    'Kỵ binh Mông Cổ tiêu diệt Khwarezm, đánh tan liên quân Nga - Cuman tại sông Kalka, tấn công Ba Lan và Hungary, rung chuyển châu Âu',
+    '1219-09-01',
+    '1242-05-01',
+    'completed',
+    'high',
+    5,
+    '#taychinh,#kalka,#balan,#hungary,#kybinh'
+  ],
+  [
+    'node-mgl-kublai-yuan',
+    'track-mongolia',
+    'Hốt Tất Liệt Định Đô Đại Đô & Lập Nhà Nguyên (1271–1279)',
+    'Hốt Tất Liệt dời đô về Khanbaliq (Bắc Kinh), đặt quốc hiệu Đại Nguyên, hoàn tất diệt Nam Tống, tạo dựng đế quốc liên lục địa khổng lồ',
+    '1271-12-18',
+    '1279-03-19',
+    'completed',
+    'high',
+    6,
+    '#hottatliet,#nhanguyen,#khanbaliq,#dainguyen'
+  ]
+];
+
+// Nodes for Timeline 6: Japan
+const japanNodes = [
+  [
+    'node-jp-yayoi',
+    'track-japan',
+    'Thời Kỳ Yayoi & Kỹ Thuật Canh Tác Lúa Nước (200 TCN – 250 SCN)',
+    'Du nhập kỹ thuật luyện kim đồng - sắt và nghề trồng lúa nước; xuất hiện các tiểu quốc, nổi tiếng nhất là Nữ vương Himiko xứ Yamatai',
+    '-0200-01-01',
+    '0250-01-01',
+    'completed',
+    'medium',
+    0,
+    '#yayoi,#luanuoc,#himiko,#yamatai'
+  ],
+  [
+    'node-jp-kofun-yamato',
+    'track-japan',
+    'Thời Kỳ Kofun & Nhà Nước Yamato Thống Nhất (250–538)',
+    'Xây dựng các gò lăng mộ khổng lồ hình lỗ khóa (Kofun); triều đình Yamato thống nhất quần đảo Nhật Bản',
+    '0250-01-01',
+    '0538-01-01',
+    'completed',
+    'medium',
+    1,
+    '#kofun,#yamato,#mohinhlokhoa'
+  ],
+  [
+    'node-jp-asuka-shotoku',
+    'track-japan',
+    'Thời Kỳ Asuka & Thái Tử Shotoku (592–645)',
+    'Thái tử Shotoku ban hành Hiến pháp 17 điều, truyền bá Phật giáo, cử sứ bộ Khiển Tùy sứ và Khiển Đường sứ sang Trung Hoa học hỏi',
+    '0592-12-08',
+    '0645-06-12',
+    'completed',
+    'high',
+    2,
+    '#asuka,#shotoku,#hienphap17dieu,#phatgiao'
+  ],
+  [
+    'node-jp-taika-reforms',
+    'track-japan',
+    'Cải Cách Taika (Đại Hóa Cải Tân) (645)',
+    'Thiên hoàng Kotoku và Nakatomi no Kamatari tiêu diệt họ Soga, ban bố cải cách Taika, tập quyền hóa quyền lực theo mô hình nhà Đường',
+    '0645-06-19',
+    '0710-03-10',
+    'completed',
+    'high',
+    3,
+    '#taika,#daihoa,#taptuyen'
+  ],
+  [
+    'node-jp-nara-period',
+    'track-japan',
+    'Thời Kỳ Nara & Đại Tượng Phật Todai-ji (710–794)',
+    'Định đô tại Heijo-kyo (Nara), biên soạn Cổ Sự Ký (Kojiki) và Nhật Bản Thư Kỷ (Nihon Shoki), đúc tượng Đại Phật Daibutsu chùa Todai-ji',
+    '0710-03-10',
+    '0794-11-22',
+    'completed',
+    'medium',
+    4,
+    '#nara,#todaiji,#daibutsu,#kojiki'
+  ],
+  [
+    'node-jp-heian-period',
+    'track-japan',
+    'Thời Kỳ Heian & Văn Hóa Quý Tộc Rực Rỡ (794–1185)',
+    'Dời đô về Heian-kyo (Kyoto); dòng họ Fujiwara nắm quyền; sáng tạo chữ viết Kana, Murasaki Shikibu viết kiệt tác Truyện Genji',
+    '0794-11-22',
+    '1185-04-25',
+    'completed',
+    'high',
+    5,
+    '#heian,#kyoto,#fujiwara,#genji,#kana'
+  ],
+  [
+    'node-jp-kamakura-shogunate',
+    'track-japan',
+    'Mạc Phủ Kamakura & Thời Đại Samurai Bắt Đầu (1185–1274)',
+    'Minamoto no Yoritomo đánh bại họ Taira trong Chiến tranh Genpei, lập nên Mạc phủ Kamakura, mở đầu thời đại thống trị của Samurai',
+    '1185-04-25',
+    '1274-11-01',
+    'completed',
+    'high',
+    6,
+    '#kamakura,#macphu,#yoritomo,#samurai'
+  ],
+  [
+    'node-jp-mongol-invasions',
+    'track-japan',
+    'Kháng Chiến Chống Quân Nguyên Mông & Bão Thần Kamikaze (1274–1281)',
+    'Mạc phủ Kamakura kiên cường chống trả hai cuộc đại xâm lăng của hạm đội Nguyên Mông; các cơn bão thần Kamikaze nhấn chìm chiến thuyền giặc',
+    '1274-11-01',
+    '1281-08-15',
+    'completed',
+    'high',
+    7,
+    '#kamikaze,#khangnguyen,#nguyenmong,#baothan'
+  ]
+];
+
+// Nodes for Timeline 7: Korea
+const koreaNodes = [
+  [
+    'node-kr-gojoseon-wiman',
+    'track-korea',
+    'Vệ Mãn Triều Tiên (Wiman Joseon) (194–108 TCN)',
+    'Vệ Mãn lập quốc sau thời kỳ Cổ Triều Tiên, phát triển thương mại và luyện đồ sắt, kiên cường kháng cự quân Tây Hán',
+    '-0194-01-01',
+    '-0108-01-01',
+    'completed',
+    'medium',
+    0,
+    '#gojoseon,#wiman,#cotrieutien'
+  ],
+  [
+    'node-kr-three-kingdoms',
+    'track-korea',
+    'Thời Kỳ Tam Quốc Triều Tiên (Goguryeo - Baekje - Silla)',
+    'Thế chân vạc Cao Câu Ly (Goguryeo), Bách Tế (Baekje) và Tân La (Silla); Phật giáo du nhập, nghệ thuật lăng mộ cổ tráng lệ',
+    '0057-01-01',
+    '0668-01-01',
+    'completed',
+    'high',
+    1,
+    '#tamquoctrieutien,#goguryeo,#baekje,#silla'
+  ],
+  [
+    'node-kr-goguryeo-sui-war',
+    'track-korea',
+    'Cao Câu Ly Kháng Chiến Chống Tùy & Trận Salsu (612)',
+    'Tướng quân Eulji Mundeok chỉ huy quân Goguryeo đánh tan hơn 30 vạn đại quân nhà Tùy tại sông Salsu (Tát Thủy)',
+    '0612-02-01',
+    '0612-07-30',
+    'completed',
+    'high',
+    2,
+    '#goguryeo,#salsu,#euljimundeok,#khangtuy'
+  ],
+  [
+    'node-kr-unified-silla',
+    'track-korea',
+    'Tân La Thống Nhất & Phật Quốc Tự (668–935)',
+    'Silla liên minh nhà Đường thống nhất bán đảo, xây dựng chùa Bulguksa và thạch động Seokguram, đỉnh cao Phật giáo',
+    '0668-09-01',
+    '0935-01-01',
+    'completed',
+    'high',
+    3,
+    '#tanla,#silla,#bulguksa,#seokguram'
+  ],
+  [
+    'node-kr-goryeo-wanggeon',
+    'track-korea',
+    'Vương Kiến Sáng Lập Triều Đại Goryeo (Cao Ly) (918)',
+    'Taejo Wang Geon thống nhất Hậu Tam Quốc, đặt tên nước là Goryeo (nguồn gốc từ "Korea"), định đô tại Kaesong',
+    '0918-07-25',
+    '0936-09-01',
+    'completed',
+    'high',
+    4,
+    '#goryeo,#caoly,#wanggeon,#kaesong'
+  ],
+  [
+    'node-kr-tripitaka-koreana',
+    'track-korea',
+    'Bát Vạn Đại Tạng Kinh & Kim Loại Hoạt Tự (1236–1251)',
+    'Khắc hơn 81.000 bản mộc Bát Vạn Đại Tạng Kinh tại chùa Haeinsa cầu an; phát minh kỹ thuật in chữ kim loại đầu tiên trên thế giới',
+    '1236-01-01',
+    '1251-10-01',
+    'completed',
+    'high',
+    5,
+    '#tripitaka,#batvancaidaitangkink,#inankimloai'
+  ],
+  [
+    'node-kr-goryeo-mongol-war',
+    'track-korea',
+    'Goryeo Kháng Chiến & Hòa Nghị Với Đế Quốc Mông Cổ (1231–1270)',
+    'Triều đình Cao Ly dời đô ra đảo Ganghwa kiên cường kháng chiến suốt 30 năm trước các đợt xâm lăng của kỵ binh Mông Cổ',
+    '1231-08-01',
+    '1270-05-01',
+    'completed',
+    'high',
+    6,
+    '#ganghwa,#khangmong,#hoanghi'
+  ]
+];
+
+// Nodes for Timeline 8: Thailand
+const thailandNodes = [
+  [
+    'node-th-ban-chiang',
+    'track-thailand',
+    'Văn Hóa Đồ Đồng - Gốm Sứ Ban Chiang (200 TCN – 200 SCN)',
+    'Nền văn minh luyện kim đồ đồng và nghệ thuật gốm hoa văn đỏ cuộn tròn độc đáo bên lưu vực sông Mekong tại Đông Bắc Thái Lan',
+    '-0200-01-01',
+    '0200-01-01',
+    'completed',
+    'medium',
+    0,
+    '#banchiang,#gomsudong,#mekong'
+  ],
+  [
+    'node-th-dvaravati',
+    'track-thailand',
+    'Vương Quốc Môn Dvaravati (Thoa La Bát Đề) (550–1000)',
+    'Mạng lưới các thành bang người Môn tại lưu vực sông Chao Phraya; du nhập Phật giáo Theravada và nghệ thuật Bánh xe Pháp Luân',
+    '0550-01-01',
+    '1000-01-01',
+    'completed',
+    'high',
+    1,
+    '#dvaravati,#nguoimon,#chaophraya,#phatgiaonamtruyen'
+  ],
+  [
+    'node-th-hariphunchai',
+    'track-thailand',
+    'Vương Quốc Hariphunchai (Lamphun) (750–1292)',
+    'Nữ vương Chamadevi sáng lập Hariphunchai ở miền Bắc Thái Lan, trung tâm văn hóa Phật giáo thịnh vượng trước khi sáp nhập vào Lan Na',
+    '0750-01-01',
+    '1292-01-01',
+    'completed',
+    'medium',
+    2,
+    '#hariphunchai,#chamadevi,#lamphun,#lanna'
+  ],
+  [
+    'node-th-lopburi-khmer',
+    'track-thailand',
+    'Thời Kỳ Ảnh Hưởng Khmer & Văn Hóa Lopburi (1000–1238)',
+    'Đế chế Khmer mở rộng ảnh hưởng tới lưu vực sông Chao Phraya, xây dựng các đền tháp Prang bằng đá sa thạch tại Lopburi và Phimai',
+    '1000-01-01',
+    '1238-01-01',
+    'completed',
+    'medium',
+    3,
+    '#lopburi,#khmer,#phimai,#kientrucprang'
+  ],
+  [
+    'node-th-sukhothai-founding',
+    'track-thailand',
+    'Sáng Lập Vương Quốc Sukhothai (Bình Minh Hạnh Phúc) (1238)',
+    'Hai thủ lĩnh người Thái Sri Indraditya và Pha Mueang nổi dậy đánh đuổi Khmer, lập nên vương quốc độc lập đầu tiên của người Thái',
+    '1238-01-01',
+    '1279-01-01',
+    'completed',
+    'high',
+    4,
+    '#sukhothai,#sriindraditya,#nguoithai,#binhminh'
+  ],
+  [
+    'node-th-ram-khamhaeng',
+    'track-thailand',
+    'Đại Đế Ram Khamhaeng & Khai Sinh Chữ Thái (1279–1298)',
+    'Vua Ram Khamhaeng sáng tạo bảng chữ cái Thái (1283) khắc bia đá, mở rộng cương thổ: "Trong nước có cá, ngoài đồng có lúa"',
+    '1279-01-01',
+    '1298-01-01',
+    'completed',
+    'high',
+    5,
+    '#ramkhamhaeng,#chuthai,#biada,#hoangkim'
+  ],
+  [
+    'node-th-lan-na-mangrai',
+    'track-thailand',
+    'Vua Mangrai Sáng Lập Vương Quốc Lan Na (1292–1296)',
+    'Vua Mangrai thống nhất các mường phương Bắc, xây dựng kinh đô Chiang Mai hoa lệ, liên minh bền chặt với Sukhothai',
+    '1292-01-01',
+    '1296-04-12',
+    'completed',
+    'medium',
+    6,
+    '#lanna,#mangrai,#chiangmai,#trieuthuaruong'
+  ]
+];
+
+// Insert nodes for all 8 timelines
 chinaNodes.forEach(n => insertNode.run(...n));
 vietnamNodes.forEach(n => insertNode.run(...n));
 europeNodes.forEach(n => insertNode.run(...n));
 centralAsiaNodes.forEach(n => insertNode.run(...n));
+mongoliaNodes.forEach(n => insertNode.run(...n));
+japanNodes.forEach(n => insertNode.run(...n));
+koreaNodes.forEach(n => insertNode.run(...n));
+thailandNodes.forEach(n => insertNode.run(...n));
 
 // Cross-timeline historical dependencies
 // 1. China <-> Vietnam
@@ -554,9 +970,33 @@ insertDep.run('dep-talas-europe', 'node-asia-talas', 'node-europe-charlemagne', 
 insertDep.run('dep-crusade-asia', 'node-europe-first-crusade', 'node-asia-samani-karakhanid', 'geopolitical_shift');
 insertDep.run('dep-mongol-europe', 'node-asia-mongol-conquest', 'node-europe-magna-carta', 'pax_mongolica_era');
 
-console.log('Successfully seeded 4 historical timelines into proj-historical:');
+// 4. Mongolia <-> China & Europe & Japan
+insertDep.run('dep-mgl-jin-song', 'node-mgl-jurchen-jin', 'node-song-dynasty', 'border_warfare');
+insertDep.run('dep-mgl-song-fall', 'node-mgl-kublai-yuan', 'node-song-dynasty', 'conquest');
+insertDep.run('dep-mgl-west-europe', 'node-mgl-western-campaign', 'node-europe-magna-carta', 'geopolitical_shockwave');
+insertDep.run('dep-mgl-yuan-japan', 'node-mgl-kublai-yuan', 'node-jp-mongol-invasions', 'naval_invasion');
+
+// 5. Japan <-> China
+insertDep.run('dep-jp-sui-asuka', 'node-sui-dynasty', 'node-jp-asuka-shotoku', 'diplomatic_mission');
+insertDep.run('dep-jp-tang-taika', 'node-tang-dynasty', 'node-jp-taika-reforms', 'legal_cultural_model');
+
+// 6. Korea <-> China & Mongolia & Japan
+insertDep.run('dep-sui-goguryeo', 'node-sui-dynasty', 'node-kr-goguryeo-sui-war', 'salsu_defense');
+insertDep.run('dep-tang-silla', 'node-tang-dynasty', 'node-kr-unified-silla', 'silla_tang_alliance');
+insertDep.run('dep-mgl-goryeo', 'node-mgl-western-campaign', 'node-kr-goryeo-mongol-war', 'ganghwa_defense');
+insertDep.run('dep-goryeo-japan', 'node-kr-goryeo-mongol-war', 'node-jp-mongol-invasions', 'staging_ground');
+
+// 7. Thailand <-> Southeast Asia & Yuan
+insertDep.run('dep-th-yuan-tribute', 'node-mgl-kublai-yuan', 'node-th-ram-khamhaeng', 'diplomatic_trade');
+insertDep.run('dep-vn-th-regional', 'node-ly-thuong-kiet', 'node-th-lopburi-khmer', 'regional_balance');
+
+console.log('Successfully seeded 8 historical timelines into proj-historical:');
 console.log('  1. Trung Hoa (track-china) - 9 nodes');
 console.log('  2. Việt Nam (track-vietnam) - 12 nodes');
 console.log('  3. Châu Âu (track-europe) - 9 nodes');
 console.log('  4. Trung Á (track-central-asia) - 7 nodes');
-console.log('Total nodes: 37, total cross-timeline dependencies: 14');
+console.log('  5. Mông Cổ (track-mongolia) - 7 nodes');
+console.log('  6. Nhật Bản (track-japan) - 8 nodes');
+console.log('  7. Triều Tiên (track-korea) - 7 nodes');
+console.log('  8. Thái Lan (track-thailand) - 7 nodes');
+console.log('Total nodes: 66, total cross-timeline dependencies: 26');
