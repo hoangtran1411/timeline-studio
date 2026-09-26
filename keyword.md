@@ -82,6 +82,7 @@
 | **Bottom Matrix Panel** | `ComparisonMatrix.tsx` | Resizable bottom spreadsheet view of all milestones across tracks. |
 | **Bottom Splitter** | `page.tsx` | Horizontal draggable splitter (`cursor-row-resize`, `z-20`) controlling matrix height. |
 | **Traveling Light Beam** (Multi-Pulse) | `BranchConnectionLayer.tsx` | Continuous stream of evenly spaced (~380px) photon pulses with fading laser tails gliding along clothesline wires. |
+| **Right-Click Context Menu** | `ContextMenu.tsx` | Smart desktop-grade context menu with contextual actions for nodes, track gaps, empty canvas, and left dock. |
 
 ---
 
@@ -217,6 +218,31 @@
 - **Single-Track Mode**: Concentrates exclusively on the selected or hovered track with maximum intensity and slightly higher velocity (~220px/s vs ~185px/s).
 - **Constant Velocity**: Calibrated to constant speed so short and long timelines have consistent, elegant visual pacing.
 
+### 15. `Right-Click Context Menu` (Smart Context Menu)
+
+- **Location**: `src/components/ContextMenu.tsx`, `src/components/ChronoCanvas.tsx`, `src/components/LeftTrackDock.tsx`
+- **Visual**: Dark slate/zinc floating menu with backdrop blur (`z-[120]`), screen boundary collision clamping, and keyboard dismissal (`Escape` or click outside).
+- **Node Context Menu**:
+  - `Edit Milestone Details`: Opens right slide-over `NodeDrawer`.
+  - `Duplicate (+7 Days)`: Clones milestone downstream by 7 days.
+  - `Branch New Track Here`: Preselects track and knot in `AddTimelineModal`.
+  - `Set Status`: Grid switcher for `Planned`, `Active` (In Progress), `Done` (Completed), or `Blocked`.
+  - `Delete Milestone`: Permanent milestone deletion.
+- **Track Wire Context Menu**:
+  - `Insert Node in Gap`: Triggered when clicking between two adjacent milestones.
+  - `Add Milestone Here`: Inserts milestone at exact clicked date.
+  - `Focus / Track All`: Toggles single-track focus or multi-track comparison.
+  - `Branch New Track`: Creates child branch from this track.
+  - `Hide Track`: Hides track from active canvas.
+  - `Delete Track`: Deletes track and its nodes.
+- **Empty Canvas Context Menu**:
+  - `Add Timeline Tracker`: Opens `AddTimelineModal`.
+  - `Track All (Reset Focus)`: Restores 100% opacity comparison mode.
+  - `Jump to Today`: Smoothly scrolls canvas to current date scrubber.
+  - `Reset Zoom (100%)`: Resets canvas zoom factor to 1.0.
+- **Left Track Dock Context Menu**:
+  - Full track management shortcuts right from sidebar cards and empty dock area.
+
 ---
 
 ## 📐 Stacking & Stacking Context Hierarchy (`z-index`)
@@ -225,6 +251,9 @@ To ensure that splitters, dropdowns, headers, and modals never clip or incorrect
 
 ```text
 ┌────────────────────────────────────────────────────────┐
+│ z-[120]  Floating Context Menus                        │
+│          • Right-Click Context Menu (ContextMenu)      │
+├────────────────────────────────────────────────────────┤
 │ z-[110]  Fullscreen Modals & Slide-Over Drawers        │
 │          • ProjectModal                                │
 │          • AddTimelineModal                            │

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { TimelineNode, FullTimelineData, Project } from '@/types/timeline';
+import { TimelineNode, FullTimelineData, Project, NodeStatus } from '@/types/timeline';
 import { Header } from '@/components/Header';
 import { ChronoCanvas, ChronoCanvasRef } from '@/components/ChronoCanvas';
 import { NodeDrawer } from '@/components/NodeDrawer';
@@ -265,6 +265,30 @@ export default function TimelineStudioPage() {
     }
     await fetchData();
     await fetchProjects();
+  };
+
+  // Handler: Duplicate Node (+7 days downstream)
+  const handleDuplicateNode = async (node: TimelineNode) => {
+    const newStartDate = addDays(node.startDate, 7);
+    const newEndDate = node.endDate ? addDays(node.endDate, 7) : null;
+    await handleSaveNode({
+      timelineId: node.timelineId,
+      title: `${node.title} (Copy)`,
+      description: node.description,
+      startDate: newStartDate,
+      endDate: newEndDate,
+      status: 'planned',
+      priority: node.priority,
+      tags: [...node.tags]
+    });
+  };
+
+  // Handler: Change Node Status directly
+  const handleChangeNodeStatus = async (nodeId: string, status: NodeStatus) => {
+    await handleSaveNode({
+      id: nodeId,
+      status
+    });
   };
 
   // Handler: Move or Resize Node (Drag and Drop)
@@ -622,6 +646,9 @@ export default function TimelineStudioPage() {
           }}
           selectedTrackId={selectedTrackId}
           onSelectTrack={handleSelectTrack}
+          onDuplicateNode={handleDuplicateNode}
+          onChangeNodeStatus={handleChangeNodeStatus}
+          onResetZoom={() => setZoom(1.0)}
         />
 
         {/* Dedicated Buffer separating Canvas Scrollbar from Bottom Resize Splitter */}

@@ -19,9 +19,11 @@ interface LeftTrackDockProps {
   onSelectTrack?: (timelineId: string | null) => void;
   hoveredTrackId?: string | null;
   onHoverTrack?: (timelineId: string | null) => void;
+  onTrackContextMenu?: (e: React.MouseEvent, track: TimelineTrack) => void;
+  onEmptyDockContextMenu?: (e: React.MouseEvent) => void;
 }
 
-export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
+const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
   timelines,
   width,
   onAddNodeToTrack,
@@ -35,7 +37,9 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
   selectedTrackId,
   onSelectTrack,
   hoveredTrackId,
-  onHoverTrack
+  onHoverTrack,
+  onTrackContextMenu,
+  onEmptyDockContextMenu
 }) => {
   const visibleTracks = timelines.filter(t => t.isVisible !== false);
   const hiddenTracks = timelines.filter(t => t.isVisible === false);
@@ -102,6 +106,11 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
               onClick={() => onSelectTrack?.(track.id)}
               onMouseEnter={() => onHoverTrack?.(track.id)}
               onMouseLeave={() => onHoverTrack?.(null)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onTrackContextMenu?.(e, track);
+              }}
               style={{
                 height: `${height}px`,
                 minHeight: `${height}px`,
@@ -308,9 +317,16 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
               onSelectTrack?.(null);
             }
           }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEmptyDockContextMenu?.(e);
+          }}
           title={selectedTrackId ? "Click empty area to track all timelines" : undefined}
         />
       </div>
     </div>
   );
 };
+
+export const LeftTrackDock = React.memo(LeftTrackDockComponent);

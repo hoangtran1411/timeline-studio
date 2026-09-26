@@ -30,7 +30,7 @@ interface NodeCoords {
   centerY: number;
 }
 
-export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
+const BranchConnectionLayerComponent: React.FC<BranchConnectionLayerProps> = ({
   timelines,
   dependencies,
   originDate,
@@ -785,3 +785,5 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     </svg>
   );
 };
+
+export const BranchConnectionLayer = React.memo(BranchConnectionLayerComponent);

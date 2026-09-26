@@ -17,9 +17,10 @@ interface TimelineNodeCardProps {
   onBranchFromNode: (node: TimelineNode) => void;
   onDelete: (nodeId: string) => void;
   onMoveNode: (nodeId: string, newStartDate: string, newEndDate: string | null) => Promise<void>;
+  onContextMenu?: (e: React.MouseEvent, node: TimelineNode) => void;
 }
 
-export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
+const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   node,
   pixelLeft,
   pixelWidth,
@@ -30,7 +31,8 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
   onAddAfter,
   onBranchFromNode,
   onDelete,
-  onMoveNode
+  onMoveNode,
+  onContextMenu
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -80,6 +82,8 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
 
   // Drag-to-move pointer handlers
   const handlePointerDownMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Only respond to primary (left) button for dragging & selection! Ignore right click (button 2)
+    if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest('button')) return;
     e.stopPropagation();
 
@@ -96,6 +100,7 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
 
   // Drag-to-resize pointer handler on right edge (Available by default, persists to localStorage)
   const handlePointerDownResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
     e.stopPropagation();
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -137,6 +142,7 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
 
   const handlePointerUp = async (e: React.PointerEvent<HTMLDivElement>) => {
     if (!pointerState.current) return;
+    if (e.button !== 0) return; // Ignore right-click release!
     const state = pointerState.current;
     pointerState.current = null;
 
@@ -219,6 +225,11 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
       onPointerUp={handlePointerUp}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenu?.(e, node);
+      }}
     >
       {/* Clothesline Knot Peg & Hanger Stem connecting down to card */}
       <div
@@ -477,3 +488,5 @@ export const TimelineNodeCard: React.FC<TimelineNodeCardProps> = ({
     </div>
   );
 };
+
+export const TimelineNodeCard = React.memo(TimelineNodeCardComponent);

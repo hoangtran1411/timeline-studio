@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { TimelineTrack, TimelineNode, NodeDependency } from '@/types/timeline';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef, useMemo, useCallback } from 'react';
+import { TimelineTrack, TimelineNode, NodeDependency, NodeStatus } from '@/types/timeline';
 import { LeftTrackDock } from './LeftTrackDock';
 import { ChronoRuler } from './ChronoRuler';
 import { TimelineNodeCard } from './TimelineNodeCard';
 import { BetweenNodeInserter } from './BetweenNodeInserter';
 import { BranchConnectionLayer } from './BranchConnectionLayer';
+import { ContextMenu, ContextMenuType } from './ContextMenu';
 import { dateToPixelX, pixelXToDate, compareDateStrings } from '@/utils/date-utils';
 
 export interface ChronoCanvasRef {
@@ -34,6 +35,9 @@ interface ChronoCanvasProps {
   onOpenAddTimeline?: () => void;
   selectedTrackId?: string | null;
   onSelectTrack?: (timelineId: string | null) => void;
+  onDuplicateNode?: (node: TimelineNode) => void;
+  onChangeNodeStatus?: (nodeId: string, status: NodeStatus) => void;
+  onResetZoom?: () => void;
 }
 
 export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
@@ -56,7 +60,10 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   gridStyle = 'notebook',
   onOpenAddTimeline,
   selectedTrackId,
-  onSelectTrack
+  onSelectTrack,
+  onDuplicateNode,
+  onChangeNodeStatus,
+  onResetZoom
 }, ref) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const leftDockScrollRef = useRef<HTMLDivElement>(null);
@@ -141,7 +148,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   }));
 
   // Calculate track heights based on the maximum collision lane within that track
-  const getTrackHeight = (track: TimelineTrack): number => {
+  const getTrackHeight = useCallback((track: TimelineTrack): number => {
     let maxLane = 0;
     track.nodes.forEach((n) => {
       if (n.lane !== undefined && n.lane > maxLane) {
@@ -151,20 +158,20 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     // Expanded track height: 210px base for lane 0 (28px wire top margin + 28px hanger + 120px card + 34px bottom padding)
     // +130px for each collision lane so cards and hover toolbars never overflow into adjacent tracks
     return Math.max(210, 210 + maxLane * 130);
-  };
+  }, []);
 
   // Filter visible tracks for canvas rendering
   const visibleTimelines: TimelineTrack[] = useMemo(() => {
     return timelines.filter((t: TimelineTrack) => t.isVisible !== false);
   }, [timelines]);
 
-  const getTrackTopOffset = (trackIndex: number): number => {
+  const getTrackTopOffset = useCallback((trackIndex: number): number => {
     let offset = 64; // height of top ruler
     for (let i = 0; i < trackIndex; i++) {
       offset += getTrackHeight(visibleTimelines[i]);
     }
     return offset;
-  };
+  }, [visibleTimelines, getTrackHeight]);
 
   const canvasWidth = Math.max(1400, Math.round(totalDays * pxPerDay));
   let totalTrackHeights = 0;
@@ -177,6 +184,129 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     const clickX = e.clientX - rect.left;
     const clickedDate = pixelXToDate(clickX, originDate, pxPerDay);
     onAddNodeToTrack(timelineId, clickedDate);
+  };
+
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    type: ContextMenuType;
+    track?: TimelineTrack;
+    node?: TimelineNode;
+    clickedDate?: string;
+    leftNeighborNode?: TimelineNode;
+    rightNeighborNode?: TimelineNode;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    type: 'canvas'
+  });
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleNodeContextMenu = (e: React.MouseEvent, node: TimelineNode, track: TimelineTrack) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      type: 'node',
+      node,
+      track
+    });
+  };
+
+  const handleTrackContextMenu = (e: React.MouseEvent, track: TimelineTrack) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickedDate = pixelXToDate(clickX, originDate, pxPerDay);
+
+    const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
+    let leftNeighbor: TimelineNode | undefined;
+    let rightNeighbor: TimelineNode | undefined;
+
+    for (let i = 0; i < sortedNodes.length - 1; i++) {
+      const curr = sortedNodes[i];
+      const next = sortedNodes[i + 1];
+      const currX = dateToPixelX(curr.startDate, originDate, pxPerDay);
+      const nextX = dateToPixelX(next.startDate, originDate, pxPerDay);
+      if (clickX >= currX && clickX <= nextX) {
+        leftNeighbor = curr;
+        rightNeighbor = next;
+        break;
+      }
+    }
+
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      type: 'track',
+      track,
+      clickedDate,
+      leftNeighborNode: leftNeighbor,
+      rightNeighborNode: rightNeighbor
+    });
+  };
+
+  const handleCanvasContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    let clickedDate = todayDateStr;
+    if (scrollContainerRef.current) {
+      const containerRect = scrollContainerRef.current.getBoundingClientRect();
+      const scrollLeft = scrollContainerRef.current.scrollLeft;
+      const canvasX = e.clientX - containerRect.left + scrollLeft;
+      clickedDate = pixelXToDate(canvasX, originDate, pxPerDay);
+    }
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      type: 'canvas',
+      clickedDate
+    });
+  };
+
+  const handleDockTrackContextMenu = (e: React.MouseEvent, track: TimelineTrack) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      type: 'dock_track',
+      track
+    });
+  };
+
+  const handleEmptyDockContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+      type: 'dock_empty'
+    });
+  };
+
+  const handleScrollToToday = () => {
+    if (scrollContainerRef.current) {
+      const todayX = dateToPixelX(todayDateStr, originDate, pxPerDay);
+      const containerWidth = scrollContainerRef.current.clientWidth;
+      scrollContainerRef.current.scrollTo({
+        left: Math.max(0, todayX - containerWidth / 2),
+        behavior: 'smooth'
+      });
+    }
   };
 
   return (
@@ -197,6 +327,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         onSelectTrack={onSelectTrack}
         hoveredTrackId={hoveredTrackId}
         onHoverTrack={setHoveredTrackId}
+        onTrackContextMenu={handleDockTrackContextMenu}
+        onEmptyDockContextMenu={handleEmptyDockContextMenu}
       />
 
       {/* Resizable Divider Splitter Handle */}
@@ -298,6 +430,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                   onDoubleClick={(e) => handleTrackBackgroundClick(e, track.id)}
                   onMouseEnter={() => setHoveredTrackId(track.id)}
                   onMouseLeave={() => setHoveredTrackId(null)}
+                  onContextMenu={(e) => handleTrackContextMenu(e, track)}
                 >
                   {/* Render Gap Inserters between adjacent nodes (active or hovered tracks) */}
                   {(!selectedTrackId || isSelectedTrack || isHoveredTrack) && sortedNodes.map((currNode, idx) => {
@@ -350,6 +483,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                         onBranchFromNode={(n) => onBranchTrack(track.id, n.id)}
                         onDelete={onDeleteNode}
                         onMoveNode={onMoveNode}
+                        onContextMenu={(e, n) => handleNodeContextMenu(e, n, track)}
                       />
                     );
                   })}
@@ -376,6 +510,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                 onOpenAddTimeline();
               }
             }}
+            onContextMenu={handleCanvasContextMenu}
             title={selectedTrackId ? "Click empty canvas to track all timelines (Double-click to add a milestone)" : "Double-click empty grid to add a milestone"}
           >
             <div className="opacity-0 group-hover/empty:opacity-100 transition-opacity px-4 py-2 rounded border border-dashed border-[#2a2b32] bg-[#141519]/80 text-[#71717a] text-xs font-mono flex items-center gap-2 pointer-events-none">
@@ -384,6 +519,35 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
           </div>
         </div>
       </div>
+
+      {/* Global Right-Click Context Menu */}
+      <ContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        type={contextMenu.type}
+        track={contextMenu.track}
+        node={contextMenu.node}
+        clickedDate={contextMenu.clickedDate}
+        leftNeighborNode={contextMenu.leftNeighborNode}
+        rightNeighborNode={contextMenu.rightNeighborNode}
+        selectedTrackId={selectedTrackId}
+        onClose={handleCloseContextMenu}
+        onSelectNode={onSelectNode}
+        onDuplicateNode={onDuplicateNode}
+        onDeleteNode={onDeleteNode}
+        onChangeNodeStatus={onChangeNodeStatus}
+        onBranchFromNode={(n) => onBranchTrack(n.timelineId, n.id)}
+        onAddNodeToTrack={onAddNodeToTrack}
+        onInsertNodeBetween={onInsertNodeBetween}
+        onBranchTrack={onBranchTrack}
+        onToggleTrackVisibility={onToggleVisibility}
+        onDeleteTrack={onDeleteTrack}
+        onSelectTrack={onSelectTrack}
+        onOpenAddTimeline={onOpenAddTimeline}
+        onScrollToToday={handleScrollToToday}
+        onResetZoom={onResetZoom}
+      />
     </div>
   );
 });
