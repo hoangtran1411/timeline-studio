@@ -43,6 +43,26 @@ body {
   background: #4e5162;
 }
 
+/* Custom minimal scrollbar for Left Track Dock */
+.dock-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #343644 #121316;
+}
+.dock-scrollbar::-webkit-scrollbar {
+  width: 7px;
+}
+.dock-scrollbar::-webkit-scrollbar-track {
+  background: #121316;
+  border-left: 1px solid #222328;
+}
+.dock-scrollbar::-webkit-scrollbar-thumb {
+  background: #343644;
+  border-radius: 4px;
+}
+.dock-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4e5162;
+}
+
 /* Notebook Paper Graph Grid (Kẻ ô vở ô ly) */
 .notebook-grid {
   background-color: #111215;

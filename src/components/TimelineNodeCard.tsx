@@ -11,6 +11,7 @@ interface TimelineNodeCardProps {
   pixelWidth: number;
   lane: number;
   pxPerDay: number;
+  zIndex?: number;
   isSelected?: boolean;
   onSelect: (node: TimelineNode) => void;
   onAddAfter: (node: TimelineNode) => void;
@@ -26,6 +27,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   pixelWidth,
   lane,
   pxPerDay,
+  zIndex = 10,
   isSelected,
   onSelect,
   onAddAfter,
@@ -205,20 +207,29 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   const effectiveLeft = pixelLeft + (isDragging ? dragDeltaX : 0);
   const topOffset = 56 + lane * 130;
 
+  // Layering hierarchy: Dragging (30000) > Hovered (20000) > Selected (10000) > Chronological base (zIndex)
+  const computedZIndex = isDragging || isResizing
+    ? 30000
+    : isHovered
+    ? 20000
+    : isSelected
+    ? 10000
+    : zIndex;
+
   return (
     <div
       style={{
         left: `${effectiveLeft}px`,
         top: `${topOffset}px`,
         width: `${currentWidth}px`,
-        zIndex: isDragging || isResizing ? 40 : 20
+        zIndex: computedZIndex
       }}
-      className={`absolute group select-none rounded-lg border transition-shadow duration-75 ${
+      className={`absolute group select-none rounded-lg border transition-shadow duration-75 shadow-sm ${
         isDragging
           ? 'bg-[#22232a] border-[#ffffff] shadow-2xl cursor-grabbing scale-[1.02]'
           : isSelected
           ? `bg-[#22232a] border-[#ffffff] ring-1 ring-[#ffffff]/20 shadow-md ${isLocked ? 'cursor-default' : 'cursor-grab'}`
-          : `bg-[#18191e] border-[#2a2b32] hover:bg-[#1f2027] hover:border-[#454754] ${isLocked ? 'cursor-default' : 'cursor-grab'}`
+          : `bg-[#18191e] border-[#2a2b32] hover:bg-[#1f2027] hover:border-[#454754] hover:shadow-xl ${isLocked ? 'cursor-default' : 'cursor-grab'}`
       }`}
       onPointerDown={handlePointerDownMove}
       onPointerMove={handlePointerMove}

@@ -5,8 +5,8 @@ const dbPath = path.join(process.cwd(), 'data', 'timeline.db');
 const db = new DatabaseSync(dbPath);
 
 const insertTimeline = db.prepare(`
-  INSERT OR REPLACE INTO timelines (id, title, description, color, parent_timeline_id, branch_point_node_id, order_index)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT OR REPLACE INTO timelines (id, project_id, title, description, color, parent_timeline_id, branch_point_node_id, order_index)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 const insertNode = db.prepare(`
@@ -22,6 +22,7 @@ const insertDep = db.prepare(`
 // 1. Timeline 1: Trung Hoa (Tần -> Tống)
 insertTimeline.run(
   'track-china',
+  'proj-historical',
   'Trung Hoa: Từ Nhà Tần Đến Nhà Tống (221 TCN – 1279 SCN)',
   'Lịch sử Trung Quốc từ Tần Thủy Hoàng thống nhất thiên hạ, Hán, Tam Quốc, Tùy, Đường đến Nhà Tống',
   'zinc',
@@ -33,12 +34,37 @@ insertTimeline.run(
 // 2. Timeline 2: Việt Nam (song song)
 insertTimeline.run(
   'track-vietnam',
+  'proj-historical',
   'Việt Nam: Từ Thời Âu Lạc Đến Thời Đại Nhà Lý (214 TCN – 1225 SCN)',
   'Lịch sử dựng nước & giữ nước của dân tộc Việt Nam: An Dương Vương, Hai Bà Trưng, Ngô Quyền đến triều Lý',
   'stone',
   null,
   null,
   1
+);
+
+// 3. Timeline 3: Châu Âu (La Mã -> Sơ Kỳ & Trung Kỳ Trung Cổ)
+insertTimeline.run(
+  'track-europe',
+  'proj-historical',
+  'Châu Âu: Từ Cộng Hòa La Mã Đến Thời Trung Cổ (202 TCN – 1280 SCN)',
+  'Đế chế La Mã cổ đại, Pax Romana, thời kỳ di cư, đế chế Carolingian, Thập tự chinh và Đại Hiến chương Magna Carta',
+  'cyan',
+  null,
+  null,
+  2
+);
+
+// 4. Timeline 4: Trung Á (Thảo Nguyên & Con Đường Tơ Lụa)
+insertTimeline.run(
+  'track-central-asia',
+  'proj-historical',
+  'Trung Á: Thảo Nguyên & Con Đường Tơ Lụa (209 TCN – 1279 SCN)',
+  'Đế chế Hung Nô, Kushan, các mạng lưới thương nhân Sogdia trên Con đường Tơ lụa, Đột Quyết Khả Hãn và Đế quốc Mông Cổ',
+  'amber',
+  null,
+  null,
+  3
 );
 
 // Nodes for Timeline 1: China
@@ -301,11 +327,214 @@ const vietnamNodes = [
   ]
 ];
 
-// Insert nodes
+// Nodes for Timeline 3: Europe
+const europeNodes = [
+  [
+    'node-europe-zama',
+    'track-europe',
+    'Trận Zama & La Mã Thống Trị Tây Địa Trung Hải',
+    'Scipio Africanus đánh bại Hannibal, La Mã toàn thắng Chiến tranh Punic lần 2, mở ra kỷ nguyên bá chủ Địa Trung Hải',
+    '-0202-10-19',
+    '-0201-01-01',
+    'completed',
+    'high',
+    0,
+    '#lama,#zama,#hannibal,#punic'
+  ],
+  [
+    'node-europe-augustus',
+    'track-europe',
+    'Augustus & Khởi Đầu Đế Chế La Mã (Pax Romana)',
+    'Sau khi Cộng hòa La Mã sụp đổ vì nội chiến, Octavianus trở thành Hoàng đế đầu tiên, mở ra hơn 200 năm hòa bình La Mã',
+    '-0027-01-16',
+    '0014-08-19',
+    'completed',
+    'high',
+    1,
+    '#augustus,#paxromana,#dechelama'
+  ],
+  [
+    'node-europe-marcus-aurelius',
+    'track-europe',
+    'Thời Kỳ Cực Thịnh Pax Romana & Marcus Aurelius',
+    'Hoàng đế triết gia Marcus Aurelius lãnh đạo La Mã trong chiến tranh Marcomanni và đại dịch Antonine, đỉnh cao thời kỳ Ngũ hiền đế',
+    '0161-03-08',
+    '0180-03-17',
+    'completed',
+    'medium',
+    2,
+    '#marcusaurelius,#triethocstoic,#paxromana'
+  ],
+  [
+    'node-europe-constantine',
+    'track-europe',
+    'Constantine Đại Đế & Sắc Lệnh Milan',
+    'Công nhận Cơ Đốc giáo, dời đô về Byzantium (Constantinople), đặt nền móng cho Đế quốc Đông La Mã (Byzantine)',
+    '0313-02-01',
+    '0337-05-22',
+    'completed',
+    'high',
+    3,
+    '#constantine,#milan,#byzantine'
+  ],
+  [
+    'node-europe-fall-rome',
+    'track-europe',
+    'Tây La Mã Sụp Đổ & Thời Kỳ Di Cư',
+    'Thủ lĩnh người Germanic Odoacer phế truất Hoàng đế Romulus Augustulus, Tây La Mã sụp đổ, Tây Âu bước vào thời kỳ Sơ Kỳ Trung Cổ',
+    '0476-09-04',
+    '0480-01-01',
+    'completed',
+    'high',
+    4,
+    '#taylamasupdo,#odoacer,#trungco'
+  ],
+  [
+    'node-europe-charlemagne',
+    'track-europe',
+    'Charlemagne & Đế Chế Carolingian',
+    'Giáo hoàng Leo III tôn Charlemagne làm Hoàng đế La Mã Thần thánh tại Rome, thống nhất Tây và Trung Âu, Phục hưng Carolingian',
+    '0800-12-25',
+    '0814-01-28',
+    'completed',
+    'high',
+    5,
+    '#charlemagne,#carolingian,#holyroman'
+  ],
+  [
+    'node-europe-hastings',
+    'track-europe',
+    'Trận Hastings & Cuộc Chinh Phục Norman (1066)',
+    'William Nhà Chinh Phạt đánh bại Vua Harold II của Anh, sáp nhập văn hóa Anglo-Saxon và Pháp, định hình lịch sử nước Anh',
+    '1066-10-14',
+    '1066-12-25',
+    'completed',
+    'medium',
+    6,
+    '#hastings,#williamchinhphat,#norman'
+  ],
+  [
+    'node-europe-first-crusade',
+    'track-europe',
+    'Cuộc Thập Tự Chinh Thứ Nhất (1096–1099)',
+    'Giáo hoàng Urban II kêu gọi các hiệp sĩ châu Âu giành lại Đất Thánh Jerusalem; thiết lập các quốc gia Thập tự quân ở Cận Đông',
+    '1096-08-15',
+    '1099-07-15',
+    'completed',
+    'high',
+    7,
+    '#thaptuchinh,#crusade,#jerusalem'
+  ],
+  [
+    'node-europe-magna-carta',
+    'track-europe',
+    'Đại Hiến Chương Magna Carta (1215)',
+    'Các quý tộc Anh buộc Vua John ký kết Magna Carta tại Runnymede, hạn chế quyền lực quân vương, nền tảng của nhà nước pháp quyền hiện đại',
+    '1215-06-15',
+    '1215-06-19',
+    'completed',
+    'high',
+    8,
+    '#magnacarta,#phapquyen,#anhquoc'
+  ]
+];
+
+// Nodes for Timeline 4: Central Asia
+const centralAsiaNodes = [
+  [
+    'node-asia-xiongnu',
+    'track-central-asia',
+    'Mạo Đốn Thiền Vu Thống Nhất Hung Nô (209 TCN)',
+    'Mạo Đốn (Modu Chanyu) thống nhất các bộ lạc du mục Trung Á, lập nên đế chế thảo nguyên hùng mạnh đối trọng trực tiếp với nhà Hán',
+    '-0209-01-01',
+    '-0174-01-01',
+    'completed',
+    'high',
+    0,
+    '#hungno,#moduchanyu,#thaonguyen'
+  ],
+  [
+    'node-asia-kushan',
+    'track-central-asia',
+    'Đế Quốc Kushan & Giao Thoa Văn Hóa Hy-Phật (30–375)',
+    'Đế quốc Kushan (Quý Sương) kiểm soát ngã tư Trung Á - Ấn Độ, phát triển nghệ thuật Gandhara và thúc đẩy Phật giáo truyền sang Đông Á',
+    '0030-01-01',
+    '0375-01-01',
+    'completed',
+    'high',
+    1,
+    '#kushan,#quysuong,#phatgiao,#gandhara'
+  ],
+  [
+    'node-asia-sogdian',
+    'track-central-asia',
+    'Thương Nhân Sogdia & Mạng Lưới Con Đường Tơ Lụa',
+    'Các ốc đảo Samarkand, Bukhara phát triển cực thịnh; người Sogdia là mạng lưới huyết mạch trao đổi hàng hóa từ Ba Tư đến Trường An',
+    '0400-01-01',
+    '0650-01-01',
+    'completed',
+    'medium',
+    2,
+    '#sogdia,#samarkand,#bukhara,#tolua'
+  ],
+  [
+    'node-asia-gokturk',
+    'track-central-asia',
+    'Đột Quyết Khả Hãn Quốc (552–603)',
+    'Bumin Qaghan lập nên đế chế du mục Göktürk kiểm soát từ Hắc Hải đến Mãn Châu, là quốc gia đầu tiên sử dụng danh xưng chính thức "Turk"',
+    '0552-01-01',
+    '0603-01-01',
+    'completed',
+    'high',
+    3,
+    '#dotquyet,#gokturk,#buminqaghan'
+  ],
+  [
+    'node-asia-talas',
+    'track-central-asia',
+    'Trận Chiến Sông Talas Lịch Sử (751)',
+    'Quân Ả Rập Abbasid liên minh người Karluk đánh bại quân đội nhà Đường do Cao Tiên Chi chỉ huy tại sông Talas; kỹ thuật làm giấy truyền sang phương Tây',
+    '0751-07-01',
+    '0751-07-31',
+    'completed',
+    'high',
+    4,
+    '#talas,#abbasid,#nhaduong,#kythuatlamgiay'
+  ],
+  [
+    'node-asia-samani-karakhanid',
+    'track-central-asia',
+    'Thời Kỳ Hoàng Kim Hồi Giáo Trung Á (Samanid & Karakhanid)',
+    'Thời kỳ bùng nổ khoa học & triết học với các học giả vĩ đại Ibn Sina (Avicenna), Al-Biruni; Hồi giáo hóa thảo nguyên Trung Á',
+    '0819-01-01',
+    '1055-01-01',
+    'completed',
+    'medium',
+    5,
+    '#samanid,#ibnsina,#albiruni,#khoahoc'
+  ],
+  [
+    'node-asia-mongol-conquest',
+    'track-central-asia',
+    'Thành Cát Tư Hãn & Đại Mông Cổ Chinh Phạt (1206–1279)',
+    'Genghis Khan thống nhất các bộ lạc thảo nguyên, chinh phục Khwarezm, Tây Hạ, Kim và Nam Tống; lập Pax Mongolica nối liền Âu - Á',
+    '1206-03-01',
+    '1279-03-19',
+    'completed',
+    'high',
+    6,
+    '#thanhcattuhan,#mongco,#genghiskhan,#paxmongolica'
+  ]
+];
+
+// Insert nodes for all 4 timelines
 chinaNodes.forEach(n => insertNode.run(...n));
 vietnamNodes.forEach(n => insertNode.run(...n));
+europeNodes.forEach(n => insertNode.run(...n));
+centralAsiaNodes.forEach(n => insertNode.run(...n));
 
 // Cross-timeline historical dependencies
+// 1. China <-> Vietnam
 insertDep.run('dep-qin-aulac', 'node-qin-empire', 'node-au-lac', 'historical_clash');
 insertDep.run('dep-han-haibatrung', 'node-han-dynasty', 'node-hai-ba-trung', 'uprising');
 insertDep.run('dep-three-batrieu', 'node-three-kingdoms', 'node-ba-trieu', 'uprising');
@@ -313,4 +542,21 @@ insertDep.run('dep-tang-bachdang', 'node-five-dynasties', 'node-bach-dang-938', 
 insertDep.run('dep-song-lehoan', 'node-song-dynasty', 'node-le-hoan-pha-tong', 'defense');
 insertDep.run('dep-song-lythuongkiet', 'node-song-dynasty', 'node-ly-thuong-kiet', 'defense');
 
-console.log('Successfully seeded historical timelines 1 & 2');
+// 2. China <-> Central Asia
+insertDep.run('dep-han-xiongnu', 'node-han-dynasty', 'node-asia-xiongnu', 'steppe_rivalry');
+insertDep.run('dep-han-kushan', 'node-han-dynasty', 'node-asia-kushan', 'silk_road_trade');
+insertDep.run('dep-sogdian-tang', 'node-asia-sogdian', 'node-tang-dynasty', 'cultural_exchange');
+insertDep.run('dep-tang-talas', 'node-tang-dynasty', 'node-asia-talas', 'clash_of_civilizations');
+insertDep.run('dep-mongol-song', 'node-asia-mongol-conquest', 'node-song-dynasty', 'conquest');
+
+// 3. Central Asia <-> Europe
+insertDep.run('dep-talas-europe', 'node-asia-talas', 'node-europe-charlemagne', 'paper_tech_transfer');
+insertDep.run('dep-crusade-asia', 'node-europe-first-crusade', 'node-asia-samani-karakhanid', 'geopolitical_shift');
+insertDep.run('dep-mongol-europe', 'node-asia-mongol-conquest', 'node-europe-magna-carta', 'pax_mongolica_era');
+
+console.log('Successfully seeded 4 historical timelines into proj-historical:');
+console.log('  1. Trung Hoa (track-china) - 9 nodes');
+console.log('  2. Việt Nam (track-vietnam) - 12 nodes');
+console.log('  3. Châu Âu (track-europe) - 9 nodes');
+console.log('  4. Trung Á (track-central-asia) - 7 nodes');
+console.log('Total nodes: 37, total cross-timeline dependencies: 14');

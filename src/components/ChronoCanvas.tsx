@@ -128,9 +128,43 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     } catch (_) {}
   };
 
+  // Synchronized bidirectional vertical scroll state between Canvas and Left Track Dock
+  const activeScrollSource = useRef<'canvas' | 'dock' | null>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const setScrollSource = (source: 'canvas' | 'dock') => {
+    activeScrollSource.current = source;
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      activeScrollSource.current = null;
+    }, 80);
+  };
+
   const handleCanvasScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (leftDockScrollRef.current) {
+    if (activeScrollSource.current === 'dock') return;
+    setScrollSource('canvas');
+
+    if (leftDockScrollRef.current && leftDockScrollRef.current.scrollTop !== e.currentTarget.scrollTop) {
       leftDockScrollRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
+
+  const handleDockScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (activeScrollSource.current === 'canvas') return;
+    setScrollSource('dock');
+
+    if (scrollContainerRef.current && scrollContainerRef.current.scrollTop !== e.currentTarget.scrollTop) {
+      scrollContainerRef.current.scrollTop = e.currentTarget.scrollTop;
     }
   };
 
@@ -322,6 +356,9 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         onDeleteTrack={onDeleteTrack}
         getTrackHeight={getTrackHeight}
         scrollRef={leftDockScrollRef}
+        onScroll={handleDockScroll}
+        onWheel={() => { activeScrollSource.current = 'dock'; }}
+        onPointerDown={() => { activeScrollSource.current = 'dock'; }}
         onOpenAddTimeline={onOpenAddTimeline}
         selectedTrackId={selectedTrackId}
         onSelectTrack={onSelectTrack}
@@ -354,6 +391,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
       <div
         ref={scrollContainerRef}
         onScroll={handleCanvasScroll}
+        onWheel={() => { activeScrollSource.current = 'canvas'; }}
+        onPointerDown={() => { activeScrollSource.current = 'canvas'; }}
         className={`flex-1 overflow-x-auto overflow-y-auto relative timeline-scrollbar ${
           gridStyle === 'notebook'
             ? 'notebook-grid'
@@ -406,8 +445,16 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
               const isSelectedTrack = selectedTrackId === track.id;
               const isHoveredTrack = hoveredTrackId === track.id;
 
-              // Sort nodes chronologically for gap insertion calculation
-              const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
+              // Sort nodes chronologically with tie-breaker so z-index and DOM ordering are deterministic
+              const sortedNodes = [...track.nodes].sort((a, b) => {
+                const diff = compareDateStrings(a.startDate, b.startDate);
+                if (diff !== 0) return diff;
+                if (a.endDate && b.endDate) {
+                  const endDiff = compareDateStrings(a.endDate, b.endDate);
+                  if (endDiff !== 0) return endDiff;
+                }
+                return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+              });
 
               return (
                 <div
@@ -457,8 +504,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                     );
                   })}
 
-                  {/* Render Node Cards */}
-                  {track.nodes.map((node) => {
+                  {/* Render Node Cards in chronological order with ascending z-index */}
+                  {sortedNodes.map((node, chronoIndex) => {
                     const startX = dateToPixelX(node.startDate, originDate, pxPerDay);
                     let nodeWidth = 160;
                     if (node.endDate) {
@@ -474,6 +521,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                         pixelWidth={nodeWidth}
                         lane={node.lane || 0}
                         pxPerDay={pxPerDay}
+                        zIndex={10 + chronoIndex}
                         isSelected={selectedNode?.id === node.id}
                         onSelect={onSelectNode}
                         onAddAfter={(n) => {

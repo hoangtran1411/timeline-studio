@@ -14,6 +14,9 @@ interface LeftTrackDockProps {
   onDeleteTrack: (timelineId: string) => void;
   getTrackHeight: (track: TimelineTrack) => number;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+  onWheel?: (e: React.WheelEvent<HTMLDivElement>) => void;
+  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onOpenAddTimeline?: () => void;
   selectedTrackId?: string | null;
   onSelectTrack?: (timelineId: string | null) => void;
@@ -33,6 +36,9 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
   onDeleteTrack,
   getTrackHeight,
   scrollRef,
+  onScroll,
+  onWheel,
+  onPointerDown,
   onOpenAddTimeline,
   selectedTrackId,
   onSelectTrack,
@@ -47,7 +53,7 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
   return (
     <div
       style={{ width: `${width}px` }}
-      className="flex-shrink-0 z-30 bg-[#121316] border-r border-[#222328] flex flex-col select-none h-full"
+      className="flex-shrink-0 z-30 bg-[#121316] border-r border-[#222328] flex flex-col select-none h-full min-h-0"
     >
       {/* Dock Header aligned with the Chrono Ruler (h-16 / 64px) */}
       <div className="h-16 px-4 py-2 border-b border-[#222328] flex items-center justify-between flex-shrink-0 bg-[#121316]">
@@ -81,7 +87,10 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
       {/* Track Cards Stack with synchronized vertical scroll */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-hidden flex flex-col divide-y divide-[#222328]"
+        onScroll={onScroll}
+        onWheel={onWheel}
+        onPointerDown={onPointerDown}
+        className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto dock-scrollbar flex flex-col divide-y divide-[#222328]"
         onClick={(e) => {
           if (e.target === e.currentTarget && selectedTrackId) {
             onSelectTrack?.(null);
@@ -311,7 +320,7 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
 
         {/* Empty area below Add Track filling remaining vertical dock height */}
         <div
-          className="flex-1 min-h-[80px] cursor-pointer"
+          className="flex-1 min-h-[160px] cursor-pointer"
           onClick={() => {
             if (selectedTrackId) {
               onSelectTrack?.(null);
