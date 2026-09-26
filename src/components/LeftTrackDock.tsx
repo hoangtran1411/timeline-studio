@@ -16,7 +16,7 @@ interface LeftTrackDockProps {
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   onOpenAddTimeline?: () => void;
   selectedTrackId?: string | null;
-  onSelectTrack?: (timelineId: string) => void;
+  onSelectTrack?: (timelineId: string | null) => void;
   hoveredTrackId?: string | null;
   onHoverTrack?: (timelineId: string | null) => void;
 }
@@ -57,13 +57,32 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
             </span>
           )}
         </div>
-        <span className="text-[11px] font-mono text-[#71717a]">Synchronized</span>
+        {selectedTrackId ? (
+          <button
+            onClick={() => onSelectTrack?.(selectedTrackId)}
+            className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1e2029] hover:bg-[#272935] text-[#ececf0] border border-[#323444] transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
+            title="Clear focus and track all timelines simultaneously"
+          >
+            <span>Track All</span>
+            <span className="text-[#9e9ea7]">✕</span>
+          </button>
+        ) : (
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16171d] text-[#9e9ea7] border border-[#242630] flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>Tracking All</span>
+          </span>
+        )}
       </div>
 
       {/* Track Cards Stack with synchronized vertical scroll */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-hidden flex flex-col divide-y divide-[#222328]"
+        onClick={(e) => {
+          if (e.target === e.currentTarget && selectedTrackId) {
+            onSelectTrack?.(null);
+          }
+        }}
       >
         {visibleTracks.map((track) => {
           const height = getTrackHeight(track);
@@ -263,16 +282,34 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
 
         {/* Add Track Action Button in dock */}
         {onOpenAddTimeline && (
-          <div className="p-3">
+          <div
+            className="p-3"
+            onClick={(e) => {
+              if (e.target === e.currentTarget && selectedTrackId) {
+                onSelectTrack?.(null);
+              }
+            }}
+          >
             <button
               onClick={onOpenAddTimeline}
-              className="w-full py-2.5 px-3 rounded border border-dashed border-[#262832] hover:border-[#383a42] bg-[#141519]/60 hover:bg-[#18191e] text-[#9e9ea7] hover:text-[#ececf0] text-xs font-mono flex items-center justify-center gap-1.5 transition-all group"
+              className="w-full py-2.5 px-3 rounded border border-dashed border-[#262832] hover:border-[#383a42] bg-[#141519]/60 hover:bg-[#18191e] text-[#9e9ea7] hover:text-[#ececf0] text-xs font-mono flex items-center justify-center gap-1.5 transition-all group cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
               <span>Add New Track</span>
             </button>
           </div>
         )}
+
+        {/* Empty area below Add Track filling remaining vertical dock height */}
+        <div
+          className="flex-1 min-h-[80px] cursor-pointer"
+          onClick={() => {
+            if (selectedTrackId) {
+              onSelectTrack?.(null);
+            }
+          }}
+          title={selectedTrackId ? "Click empty area to track all timelines" : undefined}
+        />
       </div>
     </div>
   );

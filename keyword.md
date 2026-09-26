@@ -103,6 +103,14 @@
 
 - **Active Track**:
   - Fully visible and interactable on both the Left Track Dock and the Chrono Canvas.
+- **Track All Mode (Overview / Multi-Track Comparison)**:
+  - Default state when no single track is selected (`selectedTrackId === null`).
+  - All timeline tracks in the project are 100% active, fully opaque (`opacity-100`), with crisp branch offshoots and clearly rendered cross-track dependencies, enabling direct side-by-side comparison across all timelines.
+  - The Left Track Dock displays an active `Tracking All` indicator badge.
+- **Single-Track Focus Mode**:
+  - Activated by clicking on any specific track card or canvas row.
+  - Focuses the selected track, dimming unrelated tracks (`opacity-35`) to minimize distraction.
+  - Clicking the `[Track All ✕]` button in the Left Dock header or clicking the focused track again resets to Track All Mode.
 - **Hidden Track** (`isVisible: false`):
   - Temporarily hidden from the canvas to keep the view uncluttered during comparison.
   - Toggled via the Eye icon (`Eye`/`EyeOff`) in the Left Track Dock.

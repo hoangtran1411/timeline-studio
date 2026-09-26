@@ -564,6 +564,8 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         const isHighlighted = isSelected || isHovered;
         const isDimmed = !!selectedTrackId && !isHighlighted;
         const branchOpacity = isHighlighted || !selectedTrackId ? 1 : isDimmed ? 0.25 : 1;
+        const branchStroke = isHighlighted ? '#ececf0' : !selectedTrackId ? '#8e90a0' : '#71717a';
+        const branchWidth = isHighlighted ? '2.5' : !selectedTrackId ? '2' : '1.8';
 
         return (
           <g key={branch.id} style={{ opacity: branchOpacity }} className="transition-opacity duration-200">
@@ -571,8 +573,8 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             <path
               d={branch.path}
               fill="none"
-              stroke={isHighlighted ? '#ececf0' : '#71717a'}
-              strokeWidth={isHighlighted ? '2.5' : '2'}
+              stroke={branchStroke}
+              strokeWidth={branchWidth}
               strokeDasharray={isHighlighted ? undefined : '6 4'}
               markerEnd="url(#branch-arrow)"
             />
@@ -584,14 +586,14 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
               height="18"
               rx="4"
               fill="#18191e"
-              stroke={isHighlighted ? '#525568' : '#2a2b32'}
+              stroke={isHighlighted ? '#525568' : !selectedTrackId ? '#383a48' : '#2a2b32'}
               strokeWidth="1"
             />
             <text
               x={branch.startX + 59}
               y={(branch.startY + branch.endY) / 2 + 3}
               textAnchor="middle"
-              fill={isHighlighted ? '#ececf0' : '#9e9ea7'}
+              fill={isHighlighted ? '#ececf0' : !selectedTrackId ? '#d4d4d8' : '#9e9ea7'}
               fontSize="9"
               fontFamily="monospace"
               fontWeight={isHighlighted ? 'bold' : 'normal'}
@@ -611,8 +613,8 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         const isNodeConnected = !!selectedNodeId && (dep.fromNodeId === selectedNodeId || dep.toNodeId === selectedNodeId);
         const isHovered = hoveredTrackId === dep.fromTrackId || hoveredTrackId === dep.toTrackId;
 
-        let depOpacity = 0.45; // default ambient
-        let strokeColor = '#71717a';
+        let depOpacity = 0.75; // Default ambient when tracking all timelines simultaneously
+        let strokeColor = '#9e9ea7';
         let strokeWidth = '1.5';
 
         if (isNodeConnected) {
@@ -638,8 +640,9 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             strokeWidth = '1';
           }
         } else if (isHovered) {
-          depOpacity = 0.85;
-          strokeColor = '#9e9ea7';
+          depOpacity = 1;
+          strokeColor = '#ffffff';
+          strokeWidth = '1.8';
         }
 
         return (

@@ -33,7 +33,7 @@ interface ChronoCanvasProps {
   gridStyle?: 'notebook' | 'dots' | 'plain';
   onOpenAddTimeline?: () => void;
   selectedTrackId?: string | null;
-  onSelectTrack?: (timelineId: string) => void;
+  onSelectTrack?: (timelineId: string | null) => void;
 }
 
 export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
@@ -261,7 +261,14 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
           />
 
           {/* Tracks Stack */}
-          <div className="flex flex-col pb-6">
+          <div
+            className="flex flex-col pb-6"
+            onClick={(e) => {
+              if (e.target === e.currentTarget && selectedTrackId) {
+                onSelectTrack?.(null);
+              }
+            }}
+          >
             {visibleTimelines.map((track) => {
               const trackHeight = getTrackHeight(track);
               const isSelectedTrack = selectedTrackId === track.id;
@@ -354,6 +361,11 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
           {/* Empty Canvas Area below tracks filling remaining vertical viewport */}
           <div
             className="flex-1 min-h-[160px] cursor-pointer group/empty flex items-start justify-center pt-8"
+            onClick={() => {
+              if (selectedTrackId) {
+                onSelectTrack?.(null);
+              }
+            }}
             onDoubleClick={(e) => {
               if (timelines.length > 0) {
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -364,10 +376,10 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                 onOpenAddTimeline();
               }
             }}
-            title="Double-click empty grid to add a milestone"
+            title={selectedTrackId ? "Click empty canvas to track all timelines (Double-click to add a milestone)" : "Double-click empty grid to add a milestone"}
           >
             <div className="opacity-0 group-hover/empty:opacity-100 transition-opacity px-4 py-2 rounded border border-dashed border-[#2a2b32] bg-[#141519]/80 text-[#71717a] text-xs font-mono flex items-center gap-2 pointer-events-none">
-              <span>+ Double-click to add milestone to canvas</span>
+              <span>{selectedTrackId ? 'Click empty canvas to track all timelines • Double-click to add milestone' : '+ Double-click to add milestone to canvas'}</span>
             </div>
           </div>
         </div>
