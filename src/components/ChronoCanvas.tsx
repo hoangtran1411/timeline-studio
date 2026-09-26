@@ -195,6 +195,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         onOpenAddTimeline={onOpenAddTimeline}
         selectedTrackId={selectedTrackId}
         onSelectTrack={onSelectTrack}
+        hoveredTrackId={hoveredTrackId}
+        onHoverTrack={setHoveredTrackId}
       />
 
       {/* Resizable Divider Splitter Handle */}
@@ -278,11 +280,11 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                   }}
                   className={`relative group/track transition-all duration-200 flex-shrink-0 box-border overflow-visible border-b border-[#222328] ${
                     isSelectedTrack
-                      ? 'bg-[#15161c]/80 ring-1 ring-inset ring-[#ffffff]/25 shadow-inner opacity-100'
+                      ? 'bg-[#15161c]/80 ring-1 ring-inset ring-[#ffffff]/25 shadow-inner opacity-100 z-10'
+                      : isHoveredTrack
+                      ? 'bg-[#15161c]/80 ring-1 ring-inset ring-[#ffffff]/25 shadow-inner opacity-100 z-10'
                       : selectedTrackId
-                      ? isHoveredTrack
-                        ? 'bg-[#141519]/70 opacity-85'
-                        : 'opacity-35'
+                      ? 'opacity-35'
                       : 'hover:bg-[#141519]/40 opacity-100'
                   }`}
                   onClick={() => onSelectTrack?.(track.id)}
@@ -290,8 +292,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                   onMouseEnter={() => setHoveredTrackId(track.id)}
                   onMouseLeave={() => setHoveredTrackId(null)}
                 >
-                  {/* Render Gap Inserters between adjacent nodes (active tracks only) */}
-                  {(!selectedTrackId || isSelectedTrack) && sortedNodes.map((currNode, idx) => {
+                  {/* Render Gap Inserters between adjacent nodes (active or hovered tracks) */}
+                  {(!selectedTrackId || isSelectedTrack || isHoveredTrack) && sortedNodes.map((currNode, idx) => {
                     if (idx === sortedNodes.length - 1) return null;
                     const nextNode = sortedNodes[idx + 1];
 

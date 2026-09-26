@@ -144,6 +144,45 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
       }
     }
 
+    // Generate non-overlapping background wire spans that stop at knot perimeters
+    const backgroundSpans: Array<{ startX: number; endX: number }> = [];
+    const knotRadius = 11;
+
+    if (sortedNodes.length === 0) {
+      backgroundSpans.push({ startX, endX });
+    } else {
+      const firstCoords = nodeMap.get(sortedNodes[0].id);
+      if (firstCoords && firstCoords.knotX - knotRadius > startX) {
+        backgroundSpans.push({
+          startX,
+          endX: firstCoords.knotX - knotRadius
+        });
+      }
+
+      for (let i = 0; i < sortedNodes.length - 1; i++) {
+        const curr = nodeMap.get(sortedNodes[i].id);
+        const next = nodeMap.get(sortedNodes[i + 1].id);
+        if (curr && next) {
+          const spanStart = curr.knotX + knotRadius;
+          const spanEnd = next.knotX - knotRadius;
+          if (spanEnd > spanStart) {
+            backgroundSpans.push({
+              startX: spanStart,
+              endX: spanEnd
+            });
+          }
+        }
+      }
+
+      const lastCoords = nodeMap.get(sortedNodes[sortedNodes.length - 1].id);
+      if (lastCoords && endX > lastCoords.knotX + knotRadius) {
+        backgroundSpans.push({
+          startX: lastCoords.knotX + knotRadius,
+          endX
+        });
+      }
+    }
+
     return {
       trackId: track.id,
       wireY,
@@ -151,7 +190,8 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
       endX,
       leadIn,
       segments,
-      futureWire
+      futureWire,
+      backgroundSpans
     };
   });
 
@@ -188,14 +228,20 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         if (childSortedNodes.length > 0) {
           const firstChildCoords = nodeMap.get(childSortedNodes[0].id);
           if (firstChildCoords) {
-            // Target the approach boundary of the child knot (stops ~14px before center, touching the left boundary with arrow)
-            endX = Math.max(startX + 48, firstChildCoords.knotX - 14);
-            endY = firstChildCoords.knotY;
+            // Target the approach boundary of the child knot (stops 14px before center, touching the left boundary with arrow)
+            if (firstChildCoords.knotX > startX + 16) {
+              endX = firstChildCoords.knotX - 14;
+              endY = firstChildCoords.knotY;
+            } else {
+              // Child's first node is before or right at branch point; land cleanly on wire without cutting through
+              endX = Math.max(startX + 32, firstChildCoords.knotX + 16);
+              endY = childWireY;
+            }
           }
         }
 
         // Smooth cubic bezier flowing forward (LEFT to RIGHT) and down to child clothesline
-        const deltaX = Math.max(48, endX - startX);
+        const deltaX = Math.max(28, endX - startX);
         const cp1x = startX + deltaX * 0.45;
         const cp1y = startY;
         const cp2x = endX - deltaX * 0.45;
@@ -298,10 +344,11 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     }
   });
 
-  // 4. Calculate continuous path along clothesline wire for the traveling light beam on selected track
-  const selectedTrackPath = React.useMemo(() => {
-    if (!selectedTrackId) return null;
-    const track = timelines.find((t) => t.id === selectedTrackId);
+  // 4. Calculate continuous path along clothesline wire for the traveling light beam on active or hovered track
+  const activeTrackPath = React.useMemo(() => {
+    const activeTrackId = hoveredTrackId || selectedTrackId;
+    if (!activeTrackId) return null;
+    const track = timelines.find((t) => t.id === activeTrackId);
     if (!track) return null;
 
     const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
@@ -315,8 +362,11 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     const endX = coords[coords.length - 1].knotX + 64;
 
     // The light beam travels horizontally straight along the clothesline wire through every knot
-    return `M ${startX} ${wireY} L ${endX} ${wireY}`;
-  }, [selectedTrackId, timelines, nodeMap]);
+    return {
+      path: `M ${startX} ${wireY} L ${endX} ${wireY}`,
+      trackId: activeTrackId
+    };
+  }, [hoveredTrackId, selectedTrackId, timelines, nodeMap]);
 
   return (
     <svg
@@ -384,8 +434,8 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
       {trackWires.map((tw) => {
         const isSelected = selectedTrackId === tw.trackId;
         const isHovered = hoveredTrackId === tw.trackId;
-        const isDimmed = !!selectedTrackId && !isSelected;
-        const trackOpacity = isSelected ? 1 : isHovered ? 0.85 : isDimmed ? 0.35 : 1;
+        const isDimmed = !!selectedTrackId && !isSelected && !isHovered;
+        const trackOpacity = isSelected || isHovered ? 1 : isDimmed ? 0.35 : 1;
 
         return (
           <g
@@ -393,15 +443,18 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             style={{ opacity: trackOpacity }}
             className="transition-opacity duration-200"
           >
-            {/* Subtle background taut wire */}
-            <line
-              x1={tw.startX}
-              y1={tw.wireY}
-              x2={tw.endX}
-              y2={tw.wireY}
-              stroke="#262731"
-              strokeWidth="1.5"
-            />
+            {/* Subtle background taut wire segments cleanly stopping at knot boundaries so they never slice through knots */}
+            {tw.backgroundSpans.map((span, sIdx) => (
+              <line
+                key={`bg-wire-${tw.trackId}-${sIdx}`}
+                x1={span.startX}
+                y1={tw.wireY}
+                x2={span.endX}
+                y2={tw.wireY}
+                stroke={isSelected || isHovered ? '#3a3c4a' : '#262731'}
+                strokeWidth="1.5"
+              />
+            ))}
 
             {/* Left Wall Hook / Tension Eyelet */}
             <g>
@@ -506,11 +559,11 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
 
       {/* 2. Branch Offshoots (Dropping gracefully from parent knot to child wire) */}
       {branchLines.map((branch) => {
-        const isRelated = !selectedTrackId ||
-          branch.trackId === selectedTrackId ||
-          branch.parentTrackId === selectedTrackId;
+        const isSelected = !!selectedTrackId && (branch.trackId === selectedTrackId || branch.parentTrackId === selectedTrackId);
         const isHovered = hoveredTrackId === branch.trackId || hoveredTrackId === branch.parentTrackId;
-        const branchOpacity = isRelated ? 1 : isHovered ? 0.85 : 0.25;
+        const isHighlighted = isSelected || isHovered;
+        const isDimmed = !!selectedTrackId && !isHighlighted;
+        const branchOpacity = isHighlighted || !selectedTrackId ? 1 : isDimmed ? 0.25 : 1;
 
         return (
           <g key={branch.id} style={{ opacity: branchOpacity }} className="transition-opacity duration-200">
@@ -518,9 +571,9 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             <path
               d={branch.path}
               fill="none"
-              stroke={isRelated && selectedTrackId ? '#ececf0' : '#71717a'}
-              strokeWidth={isRelated && selectedTrackId ? '2.5' : '2'}
-              strokeDasharray="6 4"
+              stroke={isHighlighted ? '#ececf0' : '#71717a'}
+              strokeWidth={isHighlighted ? '2.5' : '2'}
+              strokeDasharray={isHighlighted ? undefined : '6 4'}
               markerEnd="url(#branch-arrow)"
             />
             {/* Branch indicator pill */}
@@ -531,16 +584,17 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
               height="18"
               rx="4"
               fill="#18191e"
-              stroke={isRelated && selectedTrackId ? '#52525b' : '#2a2b32'}
+              stroke={isHighlighted ? '#525568' : '#2a2b32'}
               strokeWidth="1"
             />
             <text
               x={branch.startX + 59}
               y={(branch.startY + branch.endY) / 2 + 3}
               textAnchor="middle"
-              fill={isRelated && selectedTrackId ? '#ececf0' : '#9e9ea7'}
+              fill={isHighlighted ? '#ececf0' : '#9e9ea7'}
               fontSize="9"
               fontFamily="monospace"
+              fontWeight={isHighlighted ? 'bold' : 'normal'}
             >
               ⑂ {branch.label.length > 9 ? branch.label.slice(0, 9) + '…' : branch.label}
             </text>
@@ -606,12 +660,12 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         );
       })}
 
-      {/* 7. Traveling Light Beam on Selected Track (Tia sáng di chuyển dọc sợi dây clothesline qua các nút) */}
-      {selectedTrackPath && (
-        <g key={`beam-${selectedTrackId}`} className="pointer-events-none">
+      {/* 7. Traveling Light Beam on Selected or Hovered Track (Tia sáng di chuyển dọc sợi dây clothesline qua các nút) */}
+      {activeTrackPath && (
+        <g key={`beam-${activeTrackPath.trackId}`} className="pointer-events-none">
           {/* Luminous aura track pulse */}
           <path
-            d={selectedTrackPath}
+            d={activeTrackPath.path}
             fill="none"
             stroke="#ffffff"
             strokeWidth="3.5"
@@ -624,7 +678,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
 
           {/* High-intensity crisp core laser beam */}
           <path
-            d={selectedTrackPath}
+            d={activeTrackPath.path}
             fill="none"
             stroke="#ffffff"
             strokeWidth="2"
@@ -636,7 +690,7 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
           {/* Traveling Spark / Photon Head that glides along the clothesline wire through each knot */}
           <g>
             <animateMotion
-              path={selectedTrackPath}
+              path={activeTrackPath.path}
               dur="3.6s"
               repeatCount="indefinite"
             />

@@ -17,6 +17,8 @@ interface LeftTrackDockProps {
   onOpenAddTimeline?: () => void;
   selectedTrackId?: string | null;
   onSelectTrack?: (timelineId: string) => void;
+  hoveredTrackId?: string | null;
+  onHoverTrack?: (timelineId: string | null) => void;
 }
 
 export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
@@ -31,7 +33,9 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
   scrollRef,
   onOpenAddTimeline,
   selectedTrackId,
-  onSelectTrack
+  onSelectTrack,
+  hoveredTrackId,
+  onHoverTrack
 }) => {
   const visibleTracks = timelines.filter(t => t.isVisible !== false);
   const hiddenTracks = timelines.filter(t => t.isVisible === false);
@@ -71,11 +75,14 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
             : null;
 
           const isSelected = selectedTrackId === track.id;
+          const isHovered = hoveredTrackId === track.id;
 
           return (
             <div
               key={track.id}
               onClick={() => onSelectTrack?.(track.id)}
+              onMouseEnter={() => onHoverTrack?.(track.id)}
+              onMouseLeave={() => onHoverTrack?.(null)}
               style={{
                 height: `${height}px`,
                 minHeight: `${height}px`,
@@ -84,8 +91,10 @@ export const LeftTrackDock: React.FC<LeftTrackDockProps> = ({
               className={`p-3.5 transition-all duration-200 flex flex-col justify-between group relative flex-shrink-0 overflow-hidden box-border cursor-pointer ${
                 isSelected
                   ? 'bg-[#181920] border-l-[3px] border-l-[#ffffff] shadow-lg ring-1 ring-inset ring-[#383a42]/80 opacity-100'
+                  : isHovered
+                  ? 'bg-[#181920] border-l-[3px] border-l-[#ffffff]/70 shadow-md ring-1 ring-inset ring-[#383a42]/60 opacity-100'
                   : selectedTrackId
-                  ? 'bg-[#141519] hover:bg-[#18191e] border-l-[3px] border-l-transparent opacity-35 hover:opacity-90'
+                  ? 'bg-[#141519] hover:bg-[#18191e] border-l-[3px] border-l-transparent opacity-35 hover:opacity-100'
                   : 'bg-[#141519] hover:bg-[#18191e] border-l-[3px] border-l-transparent opacity-100'
               }`}
             >
