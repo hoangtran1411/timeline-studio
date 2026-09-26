@@ -106,7 +106,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   useEffect(() => {
     // If the server didn't pre-populate projects, fetch them
     if (initialProjects.length === 0) {
-      fetchProjects();
+      void fetchProjects();
     }
 
     // Check if user had selected a different project from localStorage previously
@@ -115,9 +115,10 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
       if (savedPid && savedPid !== activeProjectIdRef.current) {
         setActiveProjectId(savedPid);
         activeProjectIdRef.current = savedPid;
-        fetchData(savedPid);
+        void fetchData(savedPid);
       }
     } catch (_) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Project Switcher and Management Handlers
@@ -405,6 +406,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
     if (!track) return;
 
     if (data.timelines.length <= 1) {
+      // eslint-disable-next-line no-alert
       alert('Cannot archive the only active timeline track.');
       return;
     }
@@ -454,6 +456,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
 
   // Handler: Permanent Delete Track from modal
   const handlePermanentDeleteTrack = async (timelineId: string) => {
+    // eslint-disable-next-line no-alert
     if (confirm('Are you sure you want to permanently delete this timeline track and all its nodes? This cannot be undone.')) {
       await fetch(`/api/timeline/${timelineId}`, { method: 'DELETE' });
       await fetchData();
@@ -463,6 +466,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
 
   // Handler: Delete Timeline Track from dock
   const handleDeleteTrack = async (timelineId: string) => {
+    // eslint-disable-next-line no-alert
     if (confirm('Are you sure you want to permanently delete this timeline track and all its nodes? (Tip: You can also use Archive to keep it in database)')) {
       await fetch(`/api/timeline/${timelineId}`, { method: 'DELETE' });
       await fetchData();
@@ -503,28 +507,30 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
     setIsTimelineModalOpen(true);
   };
 
-  // Resizable bottom panel state
-  const [bottomPanelHeight, setBottomPanelHeight] = useState(250);
-  const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
-  const [isResizingBottom, setIsResizingBottom] = useState(false);
-  const resizeStartY = useRef<number>(0);
-  const resizeStartBottomHeight = useRef<number>(250);
-
-  useEffect(() => {
+  // Resizable bottom panel state (lazy initialization from localStorage avoids cascading re-render)
+  const [bottomPanelHeight, setBottomPanelHeight] = useState<number>(() => {
+    if (typeof window === 'undefined') return 250;
     try {
       const savedHeight = localStorage.getItem('timeline_studio_bottom_height');
       if (savedHeight) {
         const parsed = parseInt(savedHeight, 10);
-        if (!isNaN(parsed) && parsed >= 120 && parsed <= 600) {
-          setBottomPanelHeight(parsed);
-        }
-      }
-      const savedCollapsed = localStorage.getItem('timeline_studio_bottom_collapsed');
-      if (savedCollapsed === 'true') {
-        setIsBottomCollapsed(true);
+        if (!isNaN(parsed) && parsed >= 120 && parsed <= 600) return parsed;
       }
     } catch (_) {}
-  }, []);
+    return 250;
+  });
+
+  const [isBottomCollapsed, setIsBottomCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('timeline_studio_bottom_collapsed') === 'true';
+    } catch (_) {}
+    return false;
+  });
+
+  const [isResizingBottom, setIsResizingBottom] = useState(false);
+  const resizeStartY = useRef<number>(0);
+  const resizeStartBottomHeight = useRef<number>(250);
 
   const handleBottomResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -565,16 +571,16 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   };
 
   // Canvas grid style state (notebook paper / dot grid / plain)
-  const [gridStyle, setGridStyle] = useState<'notebook' | 'dots' | 'plain'>('notebook');
-
-  useEffect(() => {
+  const [gridStyle, setGridStyle] = useState<'notebook' | 'dots' | 'plain'>(() => {
+    if (typeof window === 'undefined') return 'notebook';
     try {
       const savedGrid = localStorage.getItem('timeline_studio_grid_style');
       if (savedGrid === 'notebook' || savedGrid === 'dots' || savedGrid === 'plain') {
-        setGridStyle(savedGrid);
+        return savedGrid;
       }
     } catch (_) {}
-  }, []);
+    return 'notebook';
+  });
 
   const handleToggleGrid = () => {
     setGridStyle(prev => {

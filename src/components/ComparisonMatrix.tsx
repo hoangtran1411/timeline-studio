@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TimelineTrack, TimelineNode, NodeStatus } from '@/types/timeline';
 import { formatDisplayDate, parseDate } from '@/utils/date-utils';
 import { Table, ChevronDown, ChevronUp, Search, Check, AlertCircle, Clock, Edit3 } from 'lucide-react';
@@ -36,12 +36,9 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, _setStatusFilter] = useState<string>('all');
 
-  // Reset selectedTrackTab if the track no longer exists in current project
-  useEffect(() => {
-    if (selectedTrackTab !== 'all' && !timelines.some(t => t.id === selectedTrackTab)) {
-      setSelectedTrackTab('all');
-    }
-  }, [timelines, selectedTrackTab]);
+  const activeTrackTab = (selectedTrackTab !== 'all' && !timelines.some(t => t.id === selectedTrackTab))
+    ? 'all'
+    : selectedTrackTab;
 
   // Flatten all real database nodes across all timeline tracks
   const allNodesWithTrack = useMemo(() => {
@@ -62,7 +59,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
   // Filter based on selected track, status, and search query
   const filteredRecords = useMemo(() => {
     return allNodesWithTrack.filter(({ node, track }) => {
-      if (selectedTrackTab !== 'all' && track.id !== selectedTrackTab) {
+      if (activeTrackTab !== 'all' && track.id !== activeTrackTab) {
         return false;
       }
       if (statusFilter !== 'all' && node.status !== statusFilter) {
@@ -80,7 +77,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
       }
       return true;
     });
-  }, [allNodesWithTrack, selectedTrackTab, statusFilter, searchQuery]);
+  }, [allNodesWithTrack, activeTrackTab, statusFilter, searchQuery]);
 
   const renderStatusBadge = (status: NodeStatus) => {
     switch (status) {
@@ -142,7 +139,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
             <button
               onClick={() => setSelectedTrackTab('all')}
               className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                selectedTrackTab === 'all'
+                activeTrackTab === 'all'
                   ? 'bg-[#22232a] text-[#ececf0] border border-[#383a42]'
                   : 'text-[#71717a] hover:text-[#9e9ea7]'
               }`}
@@ -154,7 +151,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                 key={track.id}
                 onClick={() => setSelectedTrackTab(track.id)}
                 className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                  selectedTrackTab === track.id
+                  activeTrackTab === track.id
                     ? 'bg-[#22232a] text-[#ececf0] border border-[#383a42]'
                     : 'text-[#71717a] hover:text-[#9e9ea7]'
                 }`}

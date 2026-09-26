@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TimelineNode, TimelineTrack, NodeStatus, NodePriority } from '@/types/timeline';
 import { X, Trash2, GitFork } from 'lucide-react';
+import { HistoricalDateInput } from './HistoricalDateInput';
 
 interface NodeDrawerProps {
   isOpen: boolean;
@@ -53,23 +54,22 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Drawer width resize state (persisted to localStorage to prevent database bloat)
-  const [drawerWidth, setDrawerWidth] = useState(480);
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeStartX = useRef(0);
-  const resizeStartWidth = useRef(480);
-
-  useEffect(() => {
+  const [drawerWidth, setDrawerWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return 480;
     try {
       const savedWidth = localStorage.getItem('timeline_studio_node_drawer_width');
       if (savedWidth) {
         const parsed = parseInt(savedWidth, 10);
         if (!isNaN(parsed) && parsed >= 360 && parsed <= 1200) {
-          setDrawerWidth(parsed);
-          resizeStartWidth.current = parsed;
+          return parsed;
         }
       }
     } catch (_) {}
-  }, []);
+    return 480;
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(480);
 
   const handleResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -273,26 +273,18 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[#9e9ea7] mb-1 font-medium">Start Date *</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] focus:outline-none focus:border-[#454754]"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-[#9e9ea7] mb-1 font-medium">End Date (Optional)</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] focus:outline-none focus:border-[#454754]"
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <HistoricalDateInput
+              label="Start Date *"
+              value={startDate}
+              onChange={setStartDate}
+              required
+            />
+            <HistoricalDateInput
+              label="End Date (Optional)"
+              value={endDate}
+              onChange={setEndDate}
+            />
           </div>
 
           {/* Insertion Collision Auto-Shift (Sắp xếp node nếu chèn vào giữa) */}
@@ -388,6 +380,7 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
               <button
                 type="button"
                 onClick={async () => {
+                  // eslint-disable-next-line no-alert
                   if (confirm(`Delete "${node.title}"?`)) {
                     await onDelete(node.id);
                     onClose();

@@ -1,7 +1,9 @@
 import { Client } from '@libsql/client';
 
+type NodeRow = [string, string, string, string, string, string | null, string, string, number, string];
+
 export async function seedHistoricalData(db: Client): Promise<void> {
-  const statements: Array<{ sql: string; args: any[] }> = [];
+  const statements: Array<{ sql: string; args: (string | number | null)[] }> = [];
 
   function addTimeline(
     id: string,
@@ -19,10 +21,21 @@ export async function seedHistoricalData(db: Client): Promise<void> {
     });
   }
 
-  function addNode(...args: any[]) {
+  function addNode(
+    id: string,
+    timelineId: string,
+    title: string,
+    description: string,
+    startDate: string,
+    endDate: string | null,
+    status: string,
+    priority: string,
+    orderIndex: number,
+    tags: string
+  ) {
     statements.push({
       sql: 'INSERT OR REPLACE INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      args
+      args: [id, timelineId, title, description, startDate, endDate, status, priority, orderIndex, tags]
     });
   }
 
@@ -954,14 +967,14 @@ const thailandNodes = [
 ];
 
 // Insert nodes for all 8 timelines
-chinaNodes.forEach(n => addNode(...n));
-vietnamNodes.forEach(n => addNode(...n));
-europeNodes.forEach(n => addNode(...n));
-centralAsiaNodes.forEach(n => addNode(...n));
-mongoliaNodes.forEach(n => addNode(...n));
-japanNodes.forEach(n => addNode(...n));
-koreaNodes.forEach(n => addNode(...n));
-thailandNodes.forEach(n => addNode(...n));
+(chinaNodes as NodeRow[]).forEach(n => addNode(...n));
+(vietnamNodes as NodeRow[]).forEach(n => addNode(...n));
+(europeNodes as NodeRow[]).forEach(n => addNode(...n));
+(centralAsiaNodes as NodeRow[]).forEach(n => addNode(...n));
+(mongoliaNodes as NodeRow[]).forEach(n => addNode(...n));
+(japanNodes as NodeRow[]).forEach(n => addNode(...n));
+(koreaNodes as NodeRow[]).forEach(n => addNode(...n));
+(thailandNodes as NodeRow[]).forEach(n => addNode(...n));
 
 // Cross-timeline historical dependencies
 // 1. China <-> Vietnam

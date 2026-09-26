@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { TimelineNode } from '@/types/timeline';
 import { formatDisplayDate, addDays } from '@/utils/date-utils';
 import { Check, Edit3, Plus, GitFork, Trash2, GripVertical, Lock, Unlock } from 'lucide-react';
@@ -50,20 +50,20 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   const isLocked = node.status === 'completed' && !isUnlocked;
 
   // Custom card width persisted in localStorage (avoids database bloat)
-  const [customWidth, setCustomWidth] = useState<number | null>(null);
-
-  useEffect(() => {
+  const [customWidth, setCustomWidth] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null;
     try {
       const raw = localStorage.getItem('timeline_studio_card_widths');
       if (raw) {
         const map = JSON.parse(raw);
         const saved = map[node.id];
         if (typeof saved === 'number' && saved >= 160 && saved <= 900) {
-          setCustomWidth(saved);
+          return saved;
         }
       }
     } catch (_) {}
-  }, [node.id]);
+    return null;
+  });
 
   const triggerLockNotice = () => {
     setShowLockNotice(true);
