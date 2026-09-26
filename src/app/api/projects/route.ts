@@ -4,7 +4,11 @@ import { getProjects, createProject } from '@/lib/timeline-service';
 export async function GET() {
   try {
     const projects = await getProjects();
-    return NextResponse.json(projects);
+    return NextResponse.json(projects, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=59'
+      }
+    });
   } catch (error) {
     console.error('Failed to get projects:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
