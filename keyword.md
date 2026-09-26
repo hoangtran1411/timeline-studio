@@ -81,7 +81,7 @@
 | **Drawer Resize Splitter** | `NodeDrawer.tsx` | Left-edge draggable splitter handle adjusting drawer width (min 360px). |
 | **Bottom Matrix Panel** | `ComparisonMatrix.tsx` | Resizable bottom spreadsheet view of all milestones across tracks. |
 | **Bottom Splitter** | `page.tsx` | Horizontal draggable splitter (`cursor-row-resize`, `z-20`) controlling matrix height. |
-| **Add Timeline Modal** | `AddTimelineModal.tsx` | Pop-up dialog for creating independent tracks or branching existing tracks. |
+| **Traveling Light Beam** (Multi-Pulse) | `BranchConnectionLayer.tsx` | Continuous stream of evenly spaced (~380px) photon pulses with fading laser tails gliding along clothesline wires. |
 
 ---
 
@@ -207,6 +207,15 @@
 - **Visual**: Spreadsheet-like matrix view at the bottom of the screen. Displays track filter tabs, searchable table, tag badges, and status pills.
 - **Splitter**: Horizontal border handle (`z-20`, `h-2 cursor-row-resize`). Drag up/down to adjust height. Double-click collapses/expands the panel.
 - **Storage**: Height and collapse states are persisted to `localStorage`.
+
+### 14. `Traveling Light Beam` (Continuous Multi-Pulse Stream)
+
+- **Location**: `src/components/BranchConnectionLayer.tsx`
+- **Visual**: A continuous stream of evenly spaced luminous photon pulses (~380px apart) gliding horizontally along each track clothesline wire through every milestone knot. Each pulse features a concentrated bright white spark center, glowing halo, and an organically fading comet laser tail (`url(#beam-core-tail)` and `url(#beam-aura-tail)`).
+- **Pre-Distributed Flow**: Uses negative SMIL `begin` offsets (`begin="-2.11s"`, etc.) so pulses are already in active flight across the entire length of the canvas upon loading, eliminating dead waiting time or empty gaps.
+- **Track All Mode**: Animates continuously across **all visible tracks** in the project, with organic phase offsets per track (`trackIdx * 0.45s`) so the canvas feels alive without mechanical lockstep.
+- **Single-Track Mode**: Concentrates exclusively on the selected or hovered track with maximum intensity and slightly higher velocity (~220px/s vs ~185px/s).
+- **Constant Velocity**: Calibrated to constant speed so short and long timelines have consistent, elegant visual pacing.
 
 ---
 

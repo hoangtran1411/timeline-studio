@@ -344,28 +344,68 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
     }
   });
 
-  // 4. Calculate continuous path along clothesline wire for the traveling light beam on active or hovered track
-  const activeTrackPath = React.useMemo(() => {
-    const activeTrackId = hoveredTrackId || selectedTrackId;
-    if (!activeTrackId) return null;
-    const track = timelines.find((t) => t.id === activeTrackId);
-    if (!track) return null;
+  // 4. Calculate continuous path and calibrated motion speed along clothesline wire for traveling light beams
+  const activeTrackBeams = React.useMemo(() => {
+    // If a specific track is selected or hovered, focus exclusively on that one
+    const focusedTrackId = hoveredTrackId || selectedTrackId;
 
-    const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
-    if (sortedNodes.length === 0) return null;
+    // In Track All mode, animate all visible tracks with nodes; otherwise animate only the focused track
+    const tracksToAnimate = focusedTrackId
+      ? timelines.filter((t) => t.id === focusedTrackId && t.isVisible !== false)
+      : timelines.filter((t) => t.isVisible !== false);
 
-    const coords = sortedNodes.map((n) => nodeMap.get(n.id)).filter(Boolean) as NodeCoords[];
-    if (coords.length === 0) return null;
+    const pulseSpacing = 380; // Distance between consecutive light pulses along the wire
 
-    const wireY = coords[0].knotY;
-    const startX = Math.max(24, coords[0].knotX - 48);
-    const endX = coords[coords.length - 1].knotX + 64;
+    return tracksToAnimate
+      .map((track, trackIdx) => {
+        const sortedNodes = [...track.nodes].sort((a, b) => compareDateStrings(a.startDate, b.startDate));
+        if (sortedNodes.length === 0) return null;
 
-    // The light beam travels horizontally straight along the clothesline wire through every knot
-    return {
-      path: `M ${startX} ${wireY} L ${endX} ${wireY}`,
-      trackId: activeTrackId
-    };
+        const coords = sortedNodes.map((n) => nodeMap.get(n.id)).filter(Boolean) as NodeCoords[];
+        if (coords.length === 0) return null;
+
+        const wireY = coords[0].knotY;
+        const startX = Math.max(24, coords[0].knotX - 48);
+        const endX = coords[coords.length - 1].knotX + 64;
+        const distance = Math.max(100, endX - startX);
+
+        // Constant natural velocity (~185-220px/s) ensures consistent perceived speed across both short and long tracks
+        const velocity = focusedTrackId ? 220 : 185;
+        const durationSec = Math.max(2.4, distance / velocity);
+
+        // Continuous stream of pulses spaced evenly so the viewport is never empty
+        const numPulses = Math.max(2, Math.round(distance / pulseSpacing));
+        const intervalSec = durationSec / numPulses;
+
+        // Subtle organic phase offset per track when viewing all tracks simultaneously
+        const trackStagger = focusedTrackId ? 0 : (trackIdx * 0.45) % intervalSec;
+
+        // Generate pulses with negative SMIL begin offsets so they are pre-distributed and already in flight across the entire track upon render
+        const pulses = Array.from({ length: numPulses }, (_, p) => {
+          const pulseOffset = (p * intervalSec + trackStagger) % durationSec;
+          return {
+            id: `pulse-${track.id}-${p}`,
+            begin: `-${pulseOffset.toFixed(2)}s`
+          };
+        });
+
+        return {
+          trackId: track.id,
+          path: `M ${startX} ${wireY} L ${endX} ${wireY}`,
+          distance,
+          duration: `${durationSec.toFixed(2)}s`,
+          isFocused: !!focusedTrackId,
+          pulses
+        };
+      })
+      .filter(Boolean) as Array<{
+        trackId: string;
+        path: string;
+        distance: number;
+        duration: string;
+        isFocused: boolean;
+        pulses: Array<{ id: string; begin: string }>;
+      }>;
   }, [hoveredTrackId, selectedTrackId, timelines, nodeMap]);
 
   return (
@@ -428,6 +468,19 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+
+        {/* Comet tail fade gradients for traveling photon pulses */}
+        <linearGradient id="beam-aura-tail" gradientUnits="userSpaceOnUse" x1="-65" y1="0" x2="0" y2="0">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="45%" stopColor="#ffffff" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.85" />
+        </linearGradient>
+
+        <linearGradient id="beam-core-tail" gradientUnits="userSpaceOnUse" x1="-35" y1="0" x2="0" y2="0">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+          <stop offset="40%" stopColor="#ffffff" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
+        </linearGradient>
       </defs>
 
       {/* 1. Track Clothesline Wires per Track (Synchronized Opacity with Knots & Cards) */}
@@ -663,49 +716,72 @@ export const BranchConnectionLayer: React.FC<BranchConnectionLayerProps> = ({
         );
       })}
 
-      {/* 7. Traveling Light Beam on Selected or Hovered Track (Tia sáng di chuyển dọc sợi dây clothesline qua các nút) */}
-      {activeTrackPath && (
-        <g key={`beam-${activeTrackPath.trackId}`} className="pointer-events-none">
-          {/* Luminous aura track pulse */}
-          <path
-            d={activeTrackPath.path}
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="3.5"
-            strokeOpacity="0.85"
-            strokeLinecap="round"
-            filter="url(#beam-glow)"
-            strokeDasharray="80 1200"
-            className="timeline-laser-tail"
-          />
+      {/* 7. Continuous Traveling Light Beam Streams along Track Clotheslines */}
+      {activeTrackBeams.map((beam) => (
+        <g key={`beam-track-${beam.trackId}`} className="pointer-events-none">
+          {beam.pulses.map((pulse) => (
+            <g key={pulse.id}>
+              <animateMotion
+                path={beam.path}
+                dur={beam.duration}
+                begin={pulse.begin}
+                repeatCount="indefinite"
+                rotate="auto"
+              />
+              {/* Soft luminous aura bloom tail */}
+              <line
+                x1="-65"
+                y1="0"
+                x2="0"
+                y2="0"
+                stroke="url(#beam-aura-tail)"
+                strokeWidth={beam.isFocused ? '3.5' : '2.6'}
+                strokeLinecap="round"
+                filter="url(#beam-glow)"
+                opacity={beam.isFocused ? 0.9 : 0.65}
+              />
 
-          {/* High-intensity crisp core laser beam */}
-          <path
-            d={activeTrackPath.path}
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeDasharray="45 1200"
-            className="timeline-laser-core"
-          />
+              {/* High-intensity crisp laser core tail */}
+              <line
+                x1="-35"
+                y1="0"
+                x2="0"
+                y2="0"
+                stroke="url(#beam-core-tail)"
+                strokeWidth={beam.isFocused ? '2' : '1.5'}
+                strokeLinecap="round"
+                opacity={beam.isFocused ? 1 : 0.85}
+              />
 
-          {/* Traveling Spark / Photon Head that glides along the clothesline wire through each knot */}
-          <g>
-            <animateMotion
-              path={activeTrackPath.path}
-              dur="3.6s"
-              repeatCount="indefinite"
-            />
-            {/* Soft outer glow */}
-            <circle cx="0" cy="0" r="9" fill="#ffffff" opacity="0.25" filter="url(#beam-glow)" />
-            {/* Inner halo */}
-            <circle cx="0" cy="0" r="4.5" fill="#ececf0" opacity="0.8" />
-            {/* Bright spark center */}
-            <circle cx="0" cy="0" r="2" fill="#ffffff" />
-          </g>
+              {/* Photon Spark Head */}
+              {/* Soft outer glow */}
+              <circle
+                cx="0"
+                cy="0"
+                r={beam.isFocused ? 8 : 6.5}
+                fill="#ffffff"
+                opacity="0.3"
+                filter="url(#beam-glow)"
+              />
+              {/* Crisp inner halo */}
+              <circle
+                cx="0"
+                cy="0"
+                r={beam.isFocused ? 4 : 3}
+                fill="#ececf0"
+                opacity="0.85"
+              />
+              {/* Concentrated bright white spark center */}
+              <circle
+                cx="0"
+                cy="0"
+                r={beam.isFocused ? 2 : 1.5}
+                fill="#ffffff"
+              />
+            </g>
+          ))}
         </g>
-      )}
+      ))}
     </svg>
   );
 };
