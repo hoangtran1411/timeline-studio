@@ -131,16 +131,30 @@ export async function POST(request: Request): Promise<NextResponse> {
       });
     }
 
+    // Support custom TIMELINE_* credentials as well as standard BLOB_* credentials
+    const blobToken = process.env.TIMELINE_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+    const blobStoreId = process.env.TIMELINE_STORE_ID || process.env.BLOB_STORE_ID;
+
     // Check credentials for Vercel Blob
     const hasBlobCredentials = Boolean(
-      process.env.BLOB_READ_WRITE_TOKEN ||
-      (process.env.BLOB_STORE_ID && process.env.VERCEL_OIDC_TOKEN) ||
-      process.env.BLOB_STORE_ID
+      blobToken ||
+      (blobStoreId && process.env.VERCEL_OIDC_TOKEN) ||
+      blobStoreId
     );
 
     let finalUrl: string;
 
-    if (hasBlobCredentials) {
+    if (hasBlobCredentials && blobToken) {
+      // Optional safety check: verify storeId consistency if both are provided
+      if (blobStoreId) {
+        const cleanStoreId = blobStoreId.replace(/^store_/, '');
+        if (!blobToken.includes(cleanStoreId)) {
+          console.warn(
+            `[Upload API] Warning: Specified store ID "${blobStoreId}" does not appear inside the read/write token. Ensure credentials belong to the same store.`
+          );
+        }
+      }
+
       // Use clean filename based on hash to avoid collisions on storage
       const ext = realMimeType.split('/')[1]?.replace('+xml', '') || 'png';
       const storageFilename = `${sha256.substring(0, 16)}.${ext}`;
@@ -148,7 +162,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       const blob = await put(storageFilename, buffer, {
         access: 'public',
         contentType: realMimeType,
-        addRandomSuffix: false
+        addRandomSuffix: false,
+        token: blobToken,
+        ...(blobStoreId ? { storeId: blobStoreId } : {})
       });
       finalUrl = blob.url;
     } else {
