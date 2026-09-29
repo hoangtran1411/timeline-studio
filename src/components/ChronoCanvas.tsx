@@ -74,6 +74,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
 
   // Resizable sidebar dock state
   const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [customCardWidths, setCustomCardWidths] = useState<Record<string, number>>({});
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const resizeStartX = useRef<number>(0);
   const resizeStartWidth = useRef<number>(320);
@@ -86,6 +87,11 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         if (!isNaN(parsed) && parsed >= 220 && parsed <= 560) {
           setSidebarWidth(parsed);
         }
+      }
+
+      const rawCardWidths = localStorage.getItem('timeline_studio_card_widths');
+      if (rawCardWidths) {
+        setCustomCardWidths(JSON.parse(rawCardWidths));
       }
     } catch (_) {}
   }, []);
@@ -246,17 +252,9 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
           nodeWidth = Math.max(160, Math.min(360, endX - startX + 160));
         }
 
-        // Check custom card width saved in localStorage
-        if (typeof window !== 'undefined') {
-          try {
-            const raw = localStorage.getItem('timeline_studio_card_widths');
-            if (raw) {
-              const map = JSON.parse(raw);
-              if (typeof map[node.id] === 'number') {
-                nodeWidth = Math.max(160, Math.min(900, map[node.id]));
-              }
-            }
-          } catch (_) {}
+        // Apply custom card width if configured
+        if (typeof customCardWidths[node.id] === 'number') {
+          nodeWidth = Math.max(160, Math.min(900, customCardWidths[node.id]));
         }
 
         const endX = startX + nodeWidth;
@@ -303,7 +301,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
         nodes: assignedNodes
       };
     });
-  }, [timelines, originDate, pxPerDay]);
+  }, [timelines, originDate, pxPerDay, customCardWidths]);
 
   // Filter visible tracks for canvas rendering
   const visibleTimelines: TimelineTrack[] = useMemo(() => {

@@ -507,26 +507,32 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
     setIsTimelineModalOpen(true);
   };
 
-  // Resizable bottom panel state (lazy initialization from localStorage avoids cascading re-render)
-  const [bottomPanelHeight, setBottomPanelHeight] = useState<number>(() => {
-    if (typeof window === 'undefined') return 250;
+  // Resizable bottom panel state (deterministic initial state avoids SSR hydration mismatches)
+  const [bottomPanelHeight, setBottomPanelHeight] = useState<number>(250);
+  const [isBottomCollapsed, setIsBottomCollapsed] = useState<boolean>(false);
+  const [gridStyle, setGridStyle] = useState<'notebook' | 'dots' | 'plain'>('notebook');
+
+  useEffect(() => {
     try {
       const savedHeight = localStorage.getItem('timeline_studio_bottom_height');
       if (savedHeight) {
         const parsed = parseInt(savedHeight, 10);
-        if (!isNaN(parsed) && parsed >= 120 && parsed <= 600) return parsed;
+        if (!isNaN(parsed) && parsed >= 120 && parsed <= 600) {
+          setBottomPanelHeight(parsed);
+        }
+      }
+
+      const savedCollapsed = localStorage.getItem('timeline_studio_bottom_collapsed');
+      if (savedCollapsed !== null) {
+        setIsBottomCollapsed(savedCollapsed === 'true');
+      }
+
+      const savedGrid = localStorage.getItem('timeline_studio_grid_style');
+      if (savedGrid === 'notebook' || savedGrid === 'dots' || savedGrid === 'plain') {
+        setGridStyle(savedGrid as 'notebook' | 'dots' | 'plain');
       }
     } catch (_) {}
-    return 250;
-  });
-
-  const [isBottomCollapsed, setIsBottomCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      return localStorage.getItem('timeline_studio_bottom_collapsed') === 'true';
-    } catch (_) {}
-    return false;
-  });
+  }, []);
 
   const [isResizingBottom, setIsResizingBottom] = useState(false);
   const resizeStartY = useRef<number>(0);
@@ -569,18 +575,6 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
       return next;
     });
   };
-
-  // Canvas grid style state (notebook paper / dot grid / plain)
-  const [gridStyle, setGridStyle] = useState<'notebook' | 'dots' | 'plain'>(() => {
-    if (typeof window === 'undefined') return 'notebook';
-    try {
-      const savedGrid = localStorage.getItem('timeline_studio_grid_style');
-      if (savedGrid === 'notebook' || savedGrid === 'dots' || savedGrid === 'plain') {
-        return savedGrid;
-      }
-    } catch (_) {}
-    return 'notebook';
-  });
 
   const handleToggleGrid = () => {
     setGridStyle(prev => {

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { TimelineTrack, TimelineNode, NodeStatus } from '@/types/timeline';
 import { formatDisplayDate, parseDate } from '@/utils/date-utils';
-import { Table, ChevronDown, ChevronUp, Search, Check, AlertCircle, Clock, Edit3 } from 'lucide-react';
+import { Table, ChevronDown, ChevronUp, Search, Check, AlertCircle, Clock, Edit3, Layers, X } from 'lucide-react';
 
 interface ComparisonMatrixProps {
   timelines: TimelineTrack[];
@@ -35,10 +35,32 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
   const [selectedTrackTab, setSelectedTrackTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, _setStatusFilter] = useState<string>('all');
+  const [isTrackDropdownOpen, setIsTrackDropdownOpen] = useState<boolean>(false);
+  const [trackSearchQuery, setTrackSearchQuery] = useState<string>('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const activeTrackTab = (selectedTrackTab !== 'all' && !timelines.some(t => t.id === selectedTrackTab))
     ? 'all'
     : selectedTrackTab;
+
+  const activeTrack = useMemo(() => {
+    return timelines.find(t => t.id === activeTrackTab);
+  }, [timelines, activeTrackTab]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsTrackDropdownOpen(false);
+      }
+    };
+    if (isTrackDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isTrackDropdownOpen]);
 
   // Flatten all real database nodes across all timeline tracks
   const allNodesWithTrack = useMemo(() => {
@@ -78,6 +100,12 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
       return true;
     });
   }, [allNodesWithTrack, activeTrackTab, statusFilter, searchQuery]);
+
+  const filteredDropdownTracks = useMemo(() => {
+    if (!trackSearchQuery.trim()) return timelines;
+    const q = trackSearchQuery.toLowerCase();
+    return timelines.filter(t => t.title.toLowerCase().includes(q));
+  }, [timelines, trackSearchQuery]);
 
   const renderStatusBadge = (status: NodeStatus) => {
     switch (status) {
@@ -119,80 +147,198 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
       className="w-full border-t border-[#222328] bg-[#121316] flex flex-col select-none font-mono text-xs flex-shrink-0 overflow-hidden box-border"
     >
       {/* Header bar (always visible, 44px) */}
-      <div className="h-11 px-4 border-b border-[#222328] flex items-center justify-between flex-shrink-0 bg-[#141519] gap-3">
-        {/* Left Title & Live Record Count */}
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="h-11 px-3 sm:px-4 border-b border-[#222328] flex items-center justify-between flex-shrink-0 bg-[#141519] gap-2 sm:gap-3">
+        {/* Left Title & Live Record Count - Flex-shrink-0 ensures it never collapses */}
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0 min-w-0">
           <div className="p-1 rounded bg-[#18191e] border border-[#2a2b32] text-[#ececf0] flex-shrink-0">
             <Table className="w-3.5 h-3.5" />
           </div>
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <h3 className="font-semibold text-xs text-[#ececf0] truncate">Timeline Milestones Matrix</h3>
-            <span className="text-[10px] px-2 py-0.5 rounded border border-[#2a2b32] bg-[#16171b] text-[#9e9ea7] flex-shrink-0">
+            <span className="text-[10px] px-2 py-0.5 rounded border border-[#2a2b32] bg-[#16171b] text-[#9e9ea7] flex-shrink-0 hidden md:inline-block">
               {allNodesWithTrack.length} Real Records (Database)
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#2a2b32] bg-[#16171b] text-[#9e9ea7] flex-shrink-0 md:hidden">
+              {allNodesWithTrack.length}
             </span>
           </div>
         </div>
 
-        {/* Center Filter Tabs (when expanded) */}
-        {!isCollapsed && (
-          <div className="flex items-center gap-1 overflow-x-auto timeline-scrollbar py-1">
-            <button
-              onClick={() => setSelectedTrackTab('all')}
-              className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                activeTrackTab === 'all'
-                  ? 'bg-[#22232a] text-[#ececf0] border border-[#383a42]'
-                  : 'text-[#71717a] hover:text-[#9e9ea7]'
-              }`}
-            >
-              All ({allNodesWithTrack.length})
-            </button>
-            {timelines.map((track) => (
-              <button
-                key={track.id}
-                onClick={() => setSelectedTrackTab(track.id)}
-                className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                  activeTrackTab === track.id
-                    ? 'bg-[#22232a] text-[#ececf0] border border-[#383a42]'
-                    : 'text-[#71717a] hover:text-[#9e9ea7]'
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ececf0]" />
-                <span>{track.title}</span>
-                <span className="text-[10px] text-[#6b6c75]">({track.nodes.length})</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Right Search & Controls */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Right Controls: Search, Combobox Tracks, Collapse/Expand */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {!isCollapsed && (
-            <div className="relative flex items-center">
-              <Search className="w-3 h-3 text-[#6b6c75] absolute left-2 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Filter matrix records..."
-                className="w-40 sm:w-48 bg-[#18191e] border border-[#2a2b32] rounded pl-7 pr-2 py-1 text-[11px] text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
-              />
-            </div>
+            <>
+              {/* Search input */}
+              <div className="relative flex items-center">
+                <Search className="w-3 h-3 text-[#6b6c75] absolute left-2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter records..."
+                  className="w-28 sm:w-36 md:w-44 bg-[#18191e] border border-[#2a2b32] rounded pl-7 pr-2 py-1 text-[11px] text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
+                />
+              </div>
+
+              {/* Combobox Tracks Selector (next to Collapse) */}
+              <div className="relative flex-shrink-0" ref={dropdownRef}>
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsTrackDropdownOpen((prev) => !prev);
+                      setTrackSearchQuery('');
+                    }}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap border ${
+                      activeTrackTab !== 'all'
+                        ? 'bg-[#181920] border-[#383a42] text-[#ececf0] hover:bg-[#202128]'
+                        : isTrackDropdownOpen
+                        ? 'bg-[#22232a] border-[#383a42] text-[#ececf0]'
+                        : 'border-[#2a2b32] bg-[#16171b] text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#1f2026]'
+                    }`}
+                    title="Filter milestones by timeline track"
+                  >
+                    {activeTrackTab !== 'all' && activeTrack ? (
+                      <>
+                        <span
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: activeTrack.color || '#ececf0' }}
+                        />
+                        <span className="truncate max-w-[110px] sm:max-w-[150px]">{activeTrack.title}</span>
+                        <span className="text-[10px] text-[#6b6c75] flex-shrink-0">({activeTrack.nodes.length})</span>
+                      </>
+                    ) : (
+                      <>
+                        <Layers className="w-3 h-3 text-[#9e9ea7]" />
+                        <span>Tracks ({timelines.length})</span>
+                      </>
+                    )}
+                    <ChevronDown
+                      className={`w-3 h-3 text-[#9e9ea7] transition-transform ${
+                        isTrackDropdownOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* 1-click Clear Filter Button when a track is active */}
+                  {activeTrackTab !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedTrackTab('all');
+                      }}
+                      className="ml-1 p-1 rounded hover:bg-[#252733] text-[#9e9ea7] hover:text-white transition-colors border border-[#2a2b32] bg-[#16171b]"
+                      title="Clear track filter (Show all tracks)"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdown Menu Popover */}
+                {isTrackDropdownOpen && (
+                  <div className="absolute top-full mt-1.5 right-0 z-50 w-64 max-w-[90vw] bg-[#16171b] border border-[#2a2b32] rounded-lg shadow-2xl p-1.5 flex flex-col gap-1 font-mono text-xs">
+                    {/* Search box if > 5 tracks */}
+                    {timelines.length > 5 && (
+                      <div className="relative px-1 pt-1 pb-1">
+                        <Search className="w-3 h-3 absolute left-3 top-3 text-[#6b6c75] pointer-events-none" />
+                        <input
+                          type="text"
+                          value={trackSearchQuery}
+                          onChange={(e) => setTrackSearchQuery(e.target.value)}
+                          placeholder="Search tracks..."
+                          className="w-full pl-7 pr-2 py-1 text-[11px] bg-[#101114] border border-[#2a2b32] rounded text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
+                          autoFocus
+                        />
+                      </div>
+                    )}
+
+                    {/* All Tracks Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTrackTab('all');
+                        setIsTrackDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-colors ${
+                        activeTrackTab === 'all'
+                          ? 'bg-[#22232a] text-[#ececf0] font-medium'
+                          : 'text-[#9e9ea7] hover:bg-[#1c1d24] hover:text-[#ececf0]'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Layers className="w-3 h-3 text-[#9e9ea7]" />
+                        <span>All Tracks</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-[#6b6c75]">({allNodesWithTrack.length})</span>
+                        {activeTrackTab === 'all' && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </button>
+
+                    <div className="h-px bg-[#222328] my-0.5" />
+
+                    {/* Tracks List */}
+                    <div className="overflow-y-auto max-h-[220px] timeline-scrollbar flex flex-col gap-0.5 pr-0.5">
+                      {filteredDropdownTracks.length > 0 ? (
+                        filteredDropdownTracks.map((track) => {
+                          const isSelected = activeTrackTab === track.id;
+                          return (
+                            <button
+                              key={track.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedTrackTab(track.id);
+                                setIsTrackDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-[11px] transition-colors text-left ${
+                                isSelected
+                                  ? 'bg-[#22232a] text-[#ececf0] font-medium'
+                                  : 'text-[#9e9ea7] hover:bg-[#1c1d24] hover:text-[#ececf0]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0 mr-2">
+                                <span
+                                  className="w-2 h-2 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: track.color || '#ececf0' }}
+                                />
+                                <span className="truncate">{track.title}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <span className="text-[10px] text-[#6b6c75]">({track.nodes.length})</span>
+                                {isSelected && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="py-3 text-center text-[10px] text-[#6b6c75]">
+                          No tracks match &quot;{trackSearchQuery}&quot;
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
+          {/* Collapse/Expand Button */}
           <button
             onClick={onToggleCollapse}
-            className="flex items-center gap-1 px-2.5 py-1 rounded border border-[#2a2b32] bg-[#18191e] hover:bg-[#202128] text-[#9e9ea7] hover:text-[#ececf0] transition-colors text-[11px]"
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded border border-[#2a2b32] bg-[#18191e] hover:bg-[#202128] text-[#9e9ea7] hover:text-[#ececf0] transition-colors text-[11px] flex-shrink-0"
             title={isCollapsed ? 'Expand comparison panel' : 'Collapse comparison panel'}
           >
             {isCollapsed ? (
               <>
                 <ChevronUp className="w-3.5 h-3.5" />
-                <span>Expand Matrix</span>
+                <span className="hidden sm:inline">Expand Matrix</span>
               </>
             ) : (
               <>
                 <ChevronDown className="w-3.5 h-3.5" />
-                <span>Collapse</span>
+                <span className="hidden sm:inline">Collapse</span>
               </>
             )}
           </button>
@@ -203,7 +349,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
       {!isCollapsed && (
         <div className="flex-1 overflow-auto p-3 timeline-scrollbar bg-[#101114]">
           <div className="rounded-lg border border-[#222328] bg-[#141519] overflow-hidden">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse min-w-[860px]">
               <thead>
                 <tr className="border-b border-[#222328] bg-[#16171b] text-[#9e9ea7] text-[10px] uppercase tracking-wider sticky top-0 z-10">
                   <th className="py-2.5 px-3 font-medium w-10 text-center">#</th>
@@ -245,9 +391,12 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
 
                       {/* Track Name */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-[#2a2b32] bg-[#18191e] text-[#9e9ea7] text-[10px]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#ececf0]" />
-                          <span>{track.title}</span>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-[#2a2b32] bg-[#18191e] text-[#9e9ea7] text-[10px] max-w-[200px]">
+                          <span
+                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: track.color || '#ececf0' }}
+                          />
+                          <span className="truncate">{track.title}</span>
                         </span>
                       </td>
 

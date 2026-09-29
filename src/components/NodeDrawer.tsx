@@ -54,19 +54,19 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Drawer width resize state (persisted to localStorage to prevent database bloat)
-  const [drawerWidth, setDrawerWidth] = useState<number>(() => {
-    if (typeof window === 'undefined') return 480;
+  const [drawerWidth, setDrawerWidth] = useState<number>(480);
+
+  useEffect(() => {
     try {
       const savedWidth = localStorage.getItem('timeline_studio_node_drawer_width');
       if (savedWidth) {
         const parsed = parseInt(savedWidth, 10);
         if (!isNaN(parsed) && parsed >= 360 && parsed <= 1200) {
-          return parsed;
+          setDrawerWidth(parsed);
         }
       }
     } catch (_) {}
-    return 480;
-  });
+  }, []);
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(480);
