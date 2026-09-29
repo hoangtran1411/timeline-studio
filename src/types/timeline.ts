@@ -24,6 +24,7 @@ export interface TimelineNode {
   priority: NodePriority;
   orderIndex: number;
   tags: string[];
+  imageUrl?: string | null;
   lane?: number; // visual sub-lane for collision avoidance
 }
 

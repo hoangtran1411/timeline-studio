@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { TimelineNode } from '@/types/timeline';
 import { formatDisplayDate, addDays } from '@/utils/date-utils';
-import { Check, Edit3, Plus, GitFork, Trash2, GripVertical, Lock, Unlock } from 'lucide-react';
+import { Check, Edit3, Plus, GitFork, Trash2, GripVertical, Lock, Unlock, Image as ImageIcon } from 'lucide-react';
 
 interface TimelineNodeCardProps {
   node: TimelineNode;
@@ -464,6 +464,11 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
           </div>
 
           <div className="flex items-center gap-1 font-mono text-[10px] text-[#9e9ea7]">
+            {node.imageUrl && (
+              <span title="Contains image attachment" className="flex items-center">
+                <ImageIcon className="w-3 h-3 text-[#9e9ea7] hover:text-[#ececf0] transition-colors" />
+              </span>
+            )}
             {node.priority === 'high' && (
               <span className="w-1.5 h-1.5 rounded-full bg-[#ececf0]" title="High Priority" />
             )}

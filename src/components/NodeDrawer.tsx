@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { TimelineNode, TimelineTrack, NodeStatus, NodePriority } from '@/types/timeline';
-import { X, Trash2, GitFork } from 'lucide-react';
+import { X, Trash2, GitFork, Image as ImageIcon, Upload, Loader2, Link as LinkIcon } from 'lucide-react';
 import { HistoricalDateInput } from './HistoricalDateInput';
 
 interface NodeDrawerProps {
@@ -23,6 +23,7 @@ interface NodeDrawerProps {
     status: NodeStatus;
     priority: NodePriority;
     tags: string[];
+    imageUrl?: string | null;
     autoShiftSubsequentDays?: number;
   }) => Promise<void>;
   onDelete?: (nodeId: string) => Promise<void>;
@@ -49,9 +50,14 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
   const [status, setStatus] = useState<NodeStatus>('planned');
   const [priority, setPriority] = useState<NodePriority>('medium');
   const [tagsInput, setTagsInput] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
   const [autoShiftDays, setAutoShiftDays] = useState(0);
   const [enableAutoShift, setEnableAutoShift] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Drawer width resize state (persisted to localStorage to prevent database bloat)
   const [drawerWidth, setDrawerWidth] = useState<number>(480);
@@ -119,6 +125,9 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
       setStatus(node.status);
       setPriority(node.priority);
       setTagsInput(node.tags.join(', '));
+      setImageUrl(node.imageUrl || null);
+      setImageUploadError(null);
+      setShowUrlInput(false);
       setEnableAutoShift(false);
       setAutoShiftDays(0);
     } else {
@@ -130,10 +139,55 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
       setStatus('planned');
       setPriority('medium');
       setTagsInput('');
+      setImageUrl(null);
+      setImageUploadError(null);
+      setShowUrlInput(false);
       setEnableAutoShift(false);
       setAutoShiftDays(14);
     }
   }, [node, isOpen, defaultTimelineId, defaultStartDate, defaultEndDate, timelines]);
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setImageUploadError('Please select a valid image file (PNG, JPG, WebP, SVG, GIF)');
+      return;
+    }
+    // Limit to 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      setImageUploadError('Image size exceeds 5MB limit');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setImageUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to upload image');
+      }
+
+      const data = await res.json();
+      if (data.url) {
+        setImageUrl(data.url);
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      setImageUploadError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -158,6 +212,7 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
         status,
         priority,
         tags,
+        imageUrl: imageUrl || null,
         autoShiftSubsequentDays: enableAutoShift ? autoShiftDays : undefined
       });
       onClose();
@@ -372,6 +427,116 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
               placeholder="Add key deliverables, goals, or notes..."
               className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754] resize-none"
             />
+          </div>
+
+          {/* Node Image Attachment */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-[#9e9ea7] font-medium flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-[#9e9ea7]" />
+                <span>Image Attachment</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowUrlInput(!showUrlInput)}
+                className="text-[10px] text-[#71717a] hover:text-[#ececf0] transition-colors flex items-center gap-1"
+              >
+                <LinkIcon className="w-2.5 h-2.5" />
+                <span>{showUrlInput ? 'Upload file' : 'Link via URL'}</span>
+              </button>
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
+            />
+
+            {/* Image Preview or Upload Dropzone */}
+            {imageUrl ? (
+              <div className="relative group rounded-md border border-[#2a2b32] bg-[#18191e] overflow-hidden p-2 flex items-center gap-3">
+                <div className="w-16 h-16 rounded border border-[#33343d] overflow-hidden bg-[#101114] flex-shrink-0 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl}
+                    alt="Node attachment"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 min-w-0 pr-8">
+                  <div className="text-[11px] text-[#ececf0] font-medium truncate">
+                    Attached Image
+                  </div>
+                  <div className="text-[10px] text-[#71717a] truncate mt-0.5" title={imageUrl}>
+                    {imageUrl}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImageUrl(null)}
+                  className="absolute right-2 top-2 p-1.5 rounded bg-[#101114]/80 text-[#9e9ea7] hover:text-red-400 hover:bg-black transition-colors"
+                  title="Remove image"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : showUrlInput ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="url"
+                  placeholder="https://example.com/image.png"
+                  value={imageUrl || ''}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="flex-1 bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
+                />
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+                className={`border border-dashed border-[#2a2b32] hover:border-[#454754] rounded-md p-4 bg-[#18191e]/50 hover:bg-[#18191e] cursor-pointer flex flex-col items-center justify-center gap-1.5 transition-colors text-center ${
+                  isUploadingImage ? 'opacity-60 pointer-events-none' : ''
+                }`}
+              >
+                {isUploadingImage ? (
+                  <>
+                    <Loader2 className="w-5 h-5 text-[#ececf0] animate-spin mb-1" />
+                    <span className="text-[11px] text-[#ececf0] font-medium">Uploading to storage...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 text-[#71717a]" />
+                    <span className="text-[11px] text-[#ececf0] font-medium">
+                      Click to upload image or drag & drop
+                    </span>
+                    <span className="text-[10px] text-[#6b6c75]">
+                      PNG, JPG, WebP, GIF up to 5MB (Vercel Blob)
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {imageUploadError && (
+              <div className="text-[10px] text-red-400 font-mono">
+                {imageUploadError}
+              </div>
+            )}
           </div>
 
           {/* Actions */}

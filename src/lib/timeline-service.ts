@@ -147,6 +147,7 @@ export async function getFullTimelineData(requestedProjectId?: string): Promise<
       timelineId: String(row.timeline_id),
       title: String(row.title),
       description: row.description ? String(row.description) : null,
+      imageUrl: row.image_url ? String(row.image_url) : null,
       startDate: String(row.start_date),
       endDate: row.end_date ? String(row.end_date) : null,
       status: (String(row.status) as NodeStatus) || 'planned',
@@ -313,6 +314,7 @@ export async function createNode(params: {
   status?: NodeStatus;
   priority?: NodePriority;
   tags?: string[];
+  imageUrl?: string | null;
   insertAfterNodeId?: string;
   autoShiftSubsequentDays?: number;
 }): Promise<TimelineNode> {
@@ -332,14 +334,15 @@ export async function createNode(params: {
 
   await db.execute({
     sql: `
-      INSERT INTO nodes (id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO nodes (id, timeline_id, title, description, image_url, start_date, end_date, status, priority, order_index, tags)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     args: [
       id,
       params.timelineId,
       params.title,
       params.description || null,
+      params.imageUrl || null,
       params.startDate,
       params.endDate || null,
       params.status || 'planned',
@@ -354,6 +357,7 @@ export async function createNode(params: {
     timelineId: params.timelineId,
     title: params.title,
     description: params.description || null,
+    imageUrl: params.imageUrl || null,
     startDate: params.startDate,
     endDate: params.endDate || null,
     status: params.status || 'planned',
@@ -411,6 +415,10 @@ export async function updateNode(id: string, params: Partial<TimelineNode>): Pro
   if (params.description !== undefined) {
     fields.push('description = ?');
     values.push(params.description);
+  }
+  if (params.imageUrl !== undefined) {
+    fields.push('image_url = ?');
+    values.push(params.imageUrl);
   }
   if (params.startDate !== undefined) {
     fields.push('start_date = ?');

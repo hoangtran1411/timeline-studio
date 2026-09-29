@@ -90,6 +90,7 @@ export async function ensureSchema(db: Client = getDb()): Promise<void> {
       timeline_id TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
+      image_url TEXT,
       start_date TEXT NOT NULL,
       end_date TEXT,
       status TEXT DEFAULT 'planned',
@@ -124,6 +125,12 @@ export async function ensureSchema(db: Client = getDb()): Promise<void> {
     }
     if (!colNames.has('project_id')) {
       await db.execute('ALTER TABLE timelines ADD COLUMN project_id TEXT');
+    }
+
+    const nodeColsRes = await db.execute('PRAGMA table_info(nodes)');
+    const nodeCols = new Set(nodeColsRes.rows.map(c => String(c.name)));
+    if (!nodeCols.has('image_url')) {
+      await db.execute('ALTER TABLE nodes ADD COLUMN image_url TEXT');
     }
   } catch (err) {
     console.warn('Column check warning:', err);
