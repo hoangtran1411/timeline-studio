@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { TimelineTrack, Project } from '@/types/timeline';
 import { X, GitFork, Layers, Folder } from 'lucide-react';
 import { renderProjectIcon } from './Header';
@@ -22,8 +22,7 @@ interface AddTimelineModalProps {
   activeProjectId?: string;
 }
 
-export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
-  isOpen,
+const AddTimelineModalDialog: React.FC<AddTimelineModalProps> = ({
   onClose,
   timelines,
   preselectedParentId,
@@ -32,39 +31,14 @@ export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
   projects = [],
   activeProjectId
 }) => {
-  const [targetProjectId, setTargetProjectId] = useState<string>(activeProjectId || '');
-  const [trackType, setTrackType] = useState<'independent' | 'branch'>('independent');
+  const initialProjectId = activeProjectId || (projects.length > 0 ? projects[0].id : '');
+  const [targetProjectId, setTargetProjectId] = useState<string>(initialProjectId);
+  const [trackType, setTrackType] = useState<'independent' | 'branch'>(preselectedParentId ? 'branch' : 'independent');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [parentTimelineId, setParentTimelineId] = useState('');
-  const [branchPointNodeId, setBranchPointNodeId] = useState('');
+  const [parentTimelineId, setParentTimelineId] = useState(preselectedParentId || timelines[0]?.id || '');
+  const [branchPointNodeId, setBranchPointNodeId] = useState(preselectedBranchNodeId || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (activeProjectId) {
-      setTargetProjectId(activeProjectId);
-    } else if (projects.length > 0) {
-      setTargetProjectId(projects[0].id);
-    }
-  }, [activeProjectId, projects]);
-
-  useEffect(() => {
-    if (preselectedParentId) {
-      setTrackType('branch');
-      setParentTimelineId(preselectedParentId);
-      if (preselectedBranchNodeId) {
-        setBranchPointNodeId(preselectedBranchNodeId);
-      }
-    } else {
-      setTrackType('independent');
-      setParentTimelineId(timelines[0]?.id || '');
-      setBranchPointNodeId('');
-    }
-    setTitle('');
-    setDescription('');
-  }, [isOpen, preselectedParentId, preselectedBranchNodeId, timelines]);
-
-  if (!isOpen) return null;
 
   const parentTrack = timelines.find(t => t.id === parentTimelineId);
   const parentNodes = parentTrack ? parentTrack.nodes : [];
@@ -267,5 +241,15 @@ export const AddTimelineModal: React.FC<AddTimelineModalProps> = ({
         </form>
       </div>
     </div>
+  );
+};
+
+export const AddTimelineModal: React.FC<AddTimelineModalProps> = (props) => {
+  if (!props.isOpen) return null;
+  return (
+    <AddTimelineModalDialog
+      key={`${props.activeProjectId ?? ''}-${props.preselectedParentId ?? 'root'}-${props.preselectedBranchNodeId ?? 'none'}`}
+      {...props}
+    />
   );
 };

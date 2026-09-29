@@ -1,5 +1,5 @@
 import { getDb, ensureSchema } from './db';
-import { TimelineTrack, TimelineNode, NodeDependency, FullTimelineData, NodeStatus, NodePriority, Project } from '@/types/timeline';
+import { TimelineTrack, TimelineNode, NodeDependency, FullTimelineData, NodeStatus, NodePriority, Project, StoredImage } from '@/types/timeline';
 import { parseDate, compareDateStrings } from '@/utils/date-utils';
 
 export async function getProjects(): Promise<Project[]> {
@@ -460,3 +460,63 @@ export async function deleteNode(id: string): Promise<void> {
   await ensureSchema(db);
   await db.execute({ sql: 'DELETE FROM nodes WHERE id = ?', args: [id] });
 }
+
+export async function findImageByHash(hash: string): Promise<StoredImage | null> {
+  const db = getDb();
+  await ensureSchema(db);
+  const res = await db.execute({
+    sql: 'SELECT id, hash, url, mime_type, size_bytes, original_filename, created_at FROM images WHERE hash = ? LIMIT 1',
+    args: [hash]
+  });
+
+  if (res.rows.length === 0) return null;
+  const row = res.rows[0];
+  return {
+    id: String(row.id),
+    hash: String(row.hash),
+    url: String(row.url),
+    mimeType: String(row.mime_type),
+    sizeBytes: Number(row.size_bytes),
+    originalFilename: row.original_filename ? String(row.original_filename) : null,
+    createdAt: row.created_at ? String(row.created_at) : undefined,
+    reused: true
+  };
+}
+
+export async function saveImageRecord(params: {
+  hash: string;
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+  originalFilename?: string | null;
+}): Promise<StoredImage> {
+  const db = getDb();
+  await ensureSchema(db);
+  const id = 'img-' + Math.random().toString(36).substring(2, 9);
+
+  await db.execute({
+    sql: `
+      INSERT INTO images (id, hash, url, mime_type, size_bytes, original_filename)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `,
+    args: [
+      id,
+      params.hash,
+      params.url,
+      params.mimeType,
+      params.sizeBytes,
+      params.originalFilename || null
+    ]
+  });
+
+  return {
+    id,
+    hash: params.hash,
+    url: params.url,
+    mimeType: params.mimeType,
+    sizeBytes: params.sizeBytes,
+    originalFilename: params.originalFilename || null,
+    reused: false
+  };
+}
+

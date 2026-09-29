@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { TimelineNode, TimelineTrack, NodeStatus, NodePriority } from '@/types/timeline';
 import { X, Trash2, GitFork, Image as ImageIcon, Upload, Loader2, Link as LinkIcon } from 'lucide-react';
 import { HistoricalDateInput } from './HistoricalDateInput';
@@ -30,8 +30,7 @@ interface NodeDrawerProps {
   onBranchFromNode?: (node: TimelineNode) => void;
 }
 
-export const NodeDrawer: React.FC<NodeDrawerProps> = ({
-  isOpen,
+const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
   onClose,
   node,
   timelines,
@@ -42,37 +41,42 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
   onDelete,
   onBranchFromNode
 }) => {
-  const [timelineId, setTimelineId] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [status, setStatus] = useState<NodeStatus>('planned');
-  const [priority, setPriority] = useState<NodePriority>('medium');
-  const [tagsInput, setTagsInput] = useState('');
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [timelineId, setTimelineId] = useState(
+    node?.timelineId || defaultTimelineId || (timelines[0]?.id ?? '')
+  );
+  const [title, setTitle] = useState(node?.title ?? '');
+  const [description, setDescription] = useState(node?.description ?? '');
+  const [startDate, setStartDate] = useState(
+    node?.startDate || defaultStartDate || new Date().toISOString().split('T')[0]
+  );
+  const [endDate, setEndDate] = useState(node?.endDate || defaultEndDate || '');
+  const [status, setStatus] = useState<NodeStatus>(node?.status ?? 'planned');
+  const [priority, setPriority] = useState<NodePriority>(node?.priority ?? 'medium');
+  const [tagsInput, setTagsInput] = useState(node?.tags?.join(', ') ?? '');
+  const [imageUrl, setImageUrl] = useState<string | null>(node?.imageUrl || null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [imageReusedNotice, setImageReusedNotice] = useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
-  const [autoShiftDays, setAutoShiftDays] = useState(0);
+  const [autoShiftDays, setAutoShiftDays] = useState(node ? 0 : 14);
   const [enableAutoShift, setEnableAutoShift] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Drawer width resize state (persisted to localStorage to prevent database bloat)
-  const [drawerWidth, setDrawerWidth] = useState<number>(480);
-
-  useEffect(() => {
+  const [drawerWidth, setDrawerWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return 480;
     try {
       const savedWidth = localStorage.getItem('timeline_studio_node_drawer_width');
       if (savedWidth) {
         const parsed = parseInt(savedWidth, 10);
         if (!isNaN(parsed) && parsed >= 360 && parsed <= 1200) {
-          setDrawerWidth(parsed);
+          return parsed;
         }
       }
     } catch (_) {}
-  }, []);
+    return 480;
+  });
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(480);
@@ -115,38 +119,6 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
     } catch (_) {}
   };
 
-  useEffect(() => {
-    if (node) {
-      setTimelineId(node.timelineId);
-      setTitle(node.title);
-      setDescription(node.description || '');
-      setStartDate(node.startDate);
-      setEndDate(node.endDate || '');
-      setStatus(node.status);
-      setPriority(node.priority);
-      setTagsInput(node.tags.join(', '));
-      setImageUrl(node.imageUrl || null);
-      setImageUploadError(null);
-      setShowUrlInput(false);
-      setEnableAutoShift(false);
-      setAutoShiftDays(0);
-    } else {
-      setTimelineId(defaultTimelineId || (timelines[0]?.id ?? ''));
-      setTitle('');
-      setDescription('');
-      setStartDate(defaultStartDate || new Date().toISOString().split('T')[0]);
-      setEndDate(defaultEndDate || '');
-      setStatus('planned');
-      setPriority('medium');
-      setTagsInput('');
-      setImageUrl(null);
-      setImageUploadError(null);
-      setShowUrlInput(false);
-      setEnableAutoShift(false);
-      setAutoShiftDays(14);
-    }
-  }, [node, isOpen, defaultTimelineId, defaultStartDate, defaultEndDate, timelines]);
-
   const handleFileUpload = async (file: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -161,6 +133,7 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
 
     setIsUploadingImage(true);
     setImageUploadError(null);
+    setImageReusedNotice(null);
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -178,6 +151,9 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
       if (data.url) {
         setImageUrl(data.url);
       }
+      if (data.reused) {
+        setImageReusedNotice('Identical image matched by SHA-256 hash. Reused existing storage reference.');
+      }
     } catch (err) {
       console.error('Upload error:', err);
       setImageUploadError(err instanceof Error ? err.message : 'Upload failed');
@@ -188,8 +164,6 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
       }
     }
   };
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -537,6 +511,12 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
                 {imageUploadError}
               </div>
             )}
+
+            {imageReusedNotice && (
+              <div className="text-[10px] text-emerald-400 font-mono bg-emerald-950/30 border border-emerald-900/50 rounded px-2 py-1">
+                ✓ {imageReusedNotice}
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -578,5 +558,15 @@ export const NodeDrawer: React.FC<NodeDrawerProps> = ({
         </form>
       </div>
     </div>
+  );
+};
+
+export const NodeDrawer: React.FC<NodeDrawerProps> = (props) => {
+  if (!props.isOpen) return null;
+  return (
+    <NodeDrawerContent
+      key={props.node?.id ?? `new-node-${props.defaultTimelineId ?? 'root'}-${props.defaultStartDate ?? 'now'}`}
+      {...props}
+    />
   );
 };

@@ -111,6 +111,16 @@ export async function ensureSchema(db: Client = getDb()): Promise<void> {
       FOREIGN KEY (from_node_id) REFERENCES nodes(id) ON DELETE CASCADE,
       FOREIGN KEY (to_node_id) REFERENCES nodes(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS images (
+      id TEXT PRIMARY KEY,
+      hash TEXT UNIQUE NOT NULL,
+      url TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      original_filename TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Run column migration for existing databases
@@ -132,6 +142,19 @@ export async function ensureSchema(db: Client = getDb()): Promise<void> {
     if (!nodeCols.has('image_url')) {
       await db.execute('ALTER TABLE nodes ADD COLUMN image_url TEXT');
     }
+
+    // Ensure images table exists in existing databases
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS images (
+        id TEXT PRIMARY KEY,
+        hash TEXT UNIQUE NOT NULL,
+        url TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        original_filename TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
   } catch (err) {
     console.warn('Column check warning:', err);
   }

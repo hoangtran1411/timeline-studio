@@ -104,20 +104,22 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   };
 
   useEffect(() => {
-    // If the server didn't pre-populate projects, fetch them
-    if (initialProjects.length === 0) {
-      void fetchProjects();
-    }
-
-    // Check if user had selected a different project from localStorage previously
-    try {
-      const savedPid = localStorage.getItem('timeline_studio_active_project_id');
-      if (savedPid && savedPid !== activeProjectIdRef.current) {
-        setActiveProjectId(savedPid);
-        activeProjectIdRef.current = savedPid;
-        void fetchData(savedPid);
+    queueMicrotask(() => {
+      // If the server didn't pre-populate projects, fetch them
+      if (initialProjects.length === 0) {
+        void fetchProjects();
       }
-    } catch (_) {}
+
+      // Check if user had selected a different project from localStorage previously
+      try {
+        const savedPid = localStorage.getItem('timeline_studio_active_project_id');
+        if (savedPid && savedPid !== activeProjectIdRef.current) {
+          setActiveProjectId(savedPid);
+          activeProjectIdRef.current = savedPid;
+          void fetchData(savedPid);
+        }
+      } catch (_) {}
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -513,25 +515,27 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   const [gridStyle, setGridStyle] = useState<'notebook' | 'dots' | 'plain'>('notebook');
 
   useEffect(() => {
-    try {
-      const savedHeight = localStorage.getItem('timeline_studio_bottom_height');
-      if (savedHeight) {
-        const parsed = parseInt(savedHeight, 10);
-        if (!isNaN(parsed) && parsed >= 120 && parsed <= 600) {
-          setBottomPanelHeight(parsed);
+    queueMicrotask(() => {
+      try {
+        const savedHeight = localStorage.getItem('timeline_studio_bottom_height');
+        if (savedHeight) {
+          const parsed = parseInt(savedHeight, 10);
+          if (!isNaN(parsed) && parsed >= 120 && parsed <= 600) {
+            setBottomPanelHeight(parsed);
+          }
         }
-      }
 
-      const savedCollapsed = localStorage.getItem('timeline_studio_bottom_collapsed');
-      if (savedCollapsed !== null) {
-        setIsBottomCollapsed(savedCollapsed === 'true');
-      }
+        const savedCollapsed = localStorage.getItem('timeline_studio_bottom_collapsed');
+        if (savedCollapsed !== null) {
+          setIsBottomCollapsed(savedCollapsed === 'true');
+        }
 
-      const savedGrid = localStorage.getItem('timeline_studio_grid_style');
-      if (savedGrid === 'notebook' || savedGrid === 'dots' || savedGrid === 'plain') {
-        setGridStyle(savedGrid as 'notebook' | 'dots' | 'plain');
-      }
-    } catch (_) {}
+        const savedGrid = localStorage.getItem('timeline_studio_grid_style');
+        if (savedGrid === 'notebook' || savedGrid === 'dots' || savedGrid === 'plain') {
+          setGridStyle(savedGrid as 'notebook' | 'dots' | 'plain');
+        }
+      } catch (_) {}
+    });
   }, []);
 
   const [isResizingBottom, setIsResizingBottom] = useState(false);

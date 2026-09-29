@@ -53,16 +53,18 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   const [customWidth, setCustomWidth] = useState<number | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('timeline_studio_card_widths');
-      if (raw) {
-        const map = JSON.parse(raw);
-        const saved = map[node.id];
-        if (typeof saved === 'number' && saved >= 160 && saved <= 900) {
-          setCustomWidth(saved);
+    queueMicrotask(() => {
+      try {
+        const raw = localStorage.getItem('timeline_studio_card_widths');
+        if (raw) {
+          const map = JSON.parse(raw);
+          const saved = map[node.id];
+          if (typeof saved === 'number' && saved >= 160 && saved <= 900) {
+            setCustomWidth(saved);
+          }
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    });
   }, [node.id]);
 
   const triggerLockNotice = () => {

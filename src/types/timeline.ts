@@ -55,3 +55,15 @@ export interface FullTimelineData {
   archivedTimelines?: TimelineTrack[];
   dependencies: NodeDependency[];
 }
+
+export interface StoredImage {
+  id: string;
+  hash: string;
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+  originalFilename?: string | null;
+  createdAt?: string;
+  reused?: boolean;
+}
+

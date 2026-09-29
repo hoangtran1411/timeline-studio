@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Project } from '@/types/timeline';
 import { X, FolderPlus, Settings2, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { renderProjectIcon } from './Header';
@@ -35,8 +35,7 @@ const ICON_PRESETS = [
   { icon: '🎯', label: 'Goals & Milestones' },
 ];
 
-export const ProjectModal: React.FC<ProjectModalProps> = ({
-  isOpen,
+const ProjectModalDialog: React.FC<ProjectModalProps> = ({
   onClose,
   project,
   onSave,
@@ -44,29 +43,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 }) => {
   const isEditing = Boolean(project);
 
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [color, setColor] = useState('amber');
-  const [icon, setIcon] = useState('📜');
+  const [name, setName] = useState(project?.name ?? '');
+  const [description, setDescription] = useState(project?.description ?? '');
+  const [color, setColor] = useState(project?.color ?? 'amber');
+  const [icon, setIcon] = useState((project?.icon ? renderProjectIcon(project.icon) : null) ?? '📜');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-
-  useEffect(() => {
-    if (project) {
-      setName(project.name);
-      setDescription(project.description || '');
-      setColor(project.color || 'amber');
-      setIcon(renderProjectIcon(project.icon) || '📜');
-    } else {
-      setName('');
-      setDescription('');
-      setColor('amber');
-      setIcon('📜');
-    }
-    setConfirmDelete(false);
-  }, [project, isOpen]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,4 +264,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       </div>
     </div>
   );
+};
+
+export const ProjectModal: React.FC<ProjectModalProps> = (props) => {
+  if (!props.isOpen) return null;
+  return <ProjectModalDialog key={props.project?.id ?? 'create-project'} {...props} />;
 };
