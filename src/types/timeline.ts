@@ -25,6 +25,7 @@ export interface TimelineNode {
   orderIndex: number;
   tags: string[];
   imageUrl?: string | null;
+  imageUrls?: string[]; // Up to 4 images
   lane?: number; // visual sub-lane for collision avoidance
 }
 

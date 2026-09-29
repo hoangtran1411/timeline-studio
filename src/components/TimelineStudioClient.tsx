@@ -25,6 +25,10 @@ const ProjectModal = dynamic(() => import('@/components/ProjectModal').then(m =>
   ssr: false
 });
 
+const ImageLightboxModal = dynamic(() => import('@/components/ImageLightboxModal').then(m => m.ImageLightboxModal), {
+  ssr: false
+});
+
 interface TimelineStudioClientProps {
   initialProjects: Project[];
   initialData: FullTimelineData;
@@ -41,6 +45,21 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   const [loading, setLoading] = useState(false);
   const [zoom, setZoom] = useState(1.0);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Fullscreen Image Lightbox Preview Modal State
+  const [lightboxImages, setLightboxImages] = useState<string[] | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const handleOpenLightbox = (images: string[], initialIndex = 0) => {
+    if (!images || images.length === 0) return;
+    setLightboxImages(images);
+    setLightboxIndex(initialIndex);
+  };
+
+  const handleCloseLightbox = () => {
+    setLightboxImages(null);
+    setLightboxIndex(0);
+  };
 
   // Modals & Drawers state
   const [selectedNode, setSelectedNode] = useState<TimelineNode | null>(null);
@@ -660,6 +679,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
           onDuplicateNode={handleDuplicateNode}
           onChangeNodeStatus={handleChangeNodeStatus}
           onResetZoom={() => setZoom(1.0)}
+          onPreviewImages={handleOpenLightbox}
         />
 
         {/* Dedicated Buffer separating Canvas Scrollbar from Bottom Resize Splitter */}
@@ -723,6 +743,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
           setIsNodeDrawerOpen(false);
           handleOpenBranchModal(node.timelineId, node.id);
         }}
+        onPreviewImages={handleOpenLightbox}
       />
 
       {/* Add / Branch Timeline Modal */}
@@ -753,6 +774,14 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
         project={editingProject}
         onSave={handleSaveProject}
         onDelete={handleDeleteProject}
+      />
+
+      {/* Fullscreen Image Preview Lightbox Modal */}
+      <ImageLightboxModal
+        isOpen={Boolean(lightboxImages && lightboxImages.length > 0)}
+        images={lightboxImages || []}
+        initialIndex={lightboxIndex}
+        onClose={handleCloseLightbox}
       />
     </div>
   );

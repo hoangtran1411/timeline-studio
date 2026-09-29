@@ -125,7 +125,7 @@ export async function getFullTimelineData(requestedProjectId?: string): Promise<
   const activeTimelineIds = new Set(timelineRes.rows.map(r => String(r.id)));
 
   const allNodeRes = await db.execute(`
-    SELECT id, timeline_id, title, description, start_date, end_date, status, priority, order_index, tags
+    SELECT id, timeline_id, title, description, image_url, start_date, end_date, status, priority, order_index, tags
     FROM nodes
     ORDER BY start_date ASC, order_index ASC
   `);
@@ -138,16 +138,45 @@ export async function getFullTimelineData(requestedProjectId?: string): Promise<
     FROM dependencies
   `);
 
+  // Helper to parse up to 4 images from legacy string or JSON array
+  function parseNodeImages(raw: unknown): { imageUrl: string | null; imageUrls: string[] } {
+    if (!raw) return { imageUrl: null, imageUrls: [] };
+    const str = String(raw).trim();
+    if (!str) return { imageUrl: null, imageUrls: [] };
+
+    if (str.startsWith('[') && str.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(str);
+        if (Array.isArray(parsed)) {
+          const valid = parsed
+            .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            .slice(0, 4);
+          return {
+            imageUrl: valid[0] || null,
+            imageUrls: valid
+          };
+        }
+      } catch (_) {}
+    }
+
+    return {
+      imageUrl: str,
+      imageUrls: [str]
+    };
+  }
+
   // Group nodes by timeline and calculate collision lanes
   const nodesByTimeline = new Map<string, TimelineNode[]>();
   for (const row of nodeRows) {
     const rawTags = row.tags ? String(row.tags) : '';
+    const { imageUrl, imageUrls } = parseNodeImages(row.image_url);
     const node: TimelineNode = {
       id: String(row.id),
       timelineId: String(row.timeline_id),
       title: String(row.title),
       description: row.description ? String(row.description) : null,
-      imageUrl: row.image_url ? String(row.image_url) : null,
+      imageUrl,
+      imageUrls,
       startDate: String(row.start_date),
       endDate: row.end_date ? String(row.end_date) : null,
       status: (String(row.status) as NodeStatus) || 'planned',
@@ -315,6 +344,7 @@ export async function createNode(params: {
   priority?: NodePriority;
   tags?: string[];
   imageUrl?: string | null;
+  imageUrls?: string[];
   insertAfterNodeId?: string;
   autoShiftSubsequentDays?: number;
 }): Promise<TimelineNode> {
@@ -332,6 +362,18 @@ export async function createNode(params: {
   });
   const maxOrder = Number(maxOrderRes.rows[0]?.max_order ?? -1);
 
+  const imagesToStore = (
+    params.imageUrls && params.imageUrls.length > 0
+      ? params.imageUrls
+      : params.imageUrl
+      ? [params.imageUrl]
+      : []
+  )
+    .filter(Boolean)
+    .slice(0, 4);
+
+  const serializedImages = imagesToStore.length > 0 ? JSON.stringify(imagesToStore) : null;
+
   await db.execute({
     sql: `
       INSERT INTO nodes (id, timeline_id, title, description, image_url, start_date, end_date, status, priority, order_index, tags)
@@ -342,7 +384,7 @@ export async function createNode(params: {
       params.timelineId,
       params.title,
       params.description || null,
-      params.imageUrl || null,
+      serializedImages,
       params.startDate,
       params.endDate || null,
       params.status || 'planned',
@@ -357,7 +399,8 @@ export async function createNode(params: {
     timelineId: params.timelineId,
     title: params.title,
     description: params.description || null,
-    imageUrl: params.imageUrl || null,
+    imageUrl: imagesToStore[0] || null,
+    imageUrls: imagesToStore,
     startDate: params.startDate,
     endDate: params.endDate || null,
     status: params.status || 'planned',
@@ -416,9 +459,14 @@ export async function updateNode(id: string, params: Partial<TimelineNode>): Pro
     fields.push('description = ?');
     values.push(params.description);
   }
-  if (params.imageUrl !== undefined) {
+  if (params.imageUrls !== undefined) {
+    const imagesToStore = (params.imageUrls || []).filter(Boolean).slice(0, 4);
     fields.push('image_url = ?');
-    values.push(params.imageUrl);
+    values.push(imagesToStore.length > 0 ? JSON.stringify(imagesToStore) : null);
+  } else if (params.imageUrl !== undefined) {
+    const imagesToStore = params.imageUrl ? [params.imageUrl] : [];
+    fields.push('image_url = ?');
+    values.push(imagesToStore.length > 0 ? JSON.stringify(imagesToStore) : null);
   }
   if (params.startDate !== undefined) {
     fields.push('start_date = ?');

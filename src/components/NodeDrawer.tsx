@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { TimelineNode, TimelineTrack, NodeStatus, NodePriority } from '@/types/timeline';
-import { X, Trash2, GitFork, Image as ImageIcon, Upload, Loader2, Link as LinkIcon } from 'lucide-react';
+import { X, Trash2, GitFork, Image as ImageIcon, Upload, Loader2, Link as LinkIcon, Maximize2, Plus } from 'lucide-react';
 import { HistoricalDateInput } from './HistoricalDateInput';
 
 interface NodeDrawerProps {
@@ -24,10 +24,12 @@ interface NodeDrawerProps {
     priority: NodePriority;
     tags: string[];
     imageUrl?: string | null;
+    imageUrls?: string[];
     autoShiftSubsequentDays?: number;
   }) => Promise<void>;
   onDelete?: (nodeId: string) => Promise<void>;
   onBranchFromNode?: (node: TimelineNode) => void;
+  onPreviewImages?: (images: string[], index?: number) => void;
 }
 
 const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
@@ -39,7 +41,8 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
   defaultEndDate,
   onSave,
   onDelete,
-  onBranchFromNode
+  onBranchFromNode,
+  onPreviewImages
 }) => {
   const [timelineId, setTimelineId] = useState(
     node?.timelineId || defaultTimelineId || (timelines[0]?.id ?? '')
@@ -53,7 +56,16 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
   const [status, setStatus] = useState<NodeStatus>(node?.status ?? 'planned');
   const [priority, setPriority] = useState<NodePriority>(node?.priority ?? 'medium');
   const [tagsInput, setTagsInput] = useState(node?.tags?.join(', ') ?? '');
-  const [imageUrl, setImageUrl] = useState<string | null>(node?.imageUrl || null);
+  const [imageUrls, setImageUrls] = useState<string[]>(() => {
+    if (node?.imageUrls && node.imageUrls.length > 0) {
+      return node.imageUrls.slice(0, 4);
+    }
+    if (node?.imageUrl) {
+      return [node.imageUrl];
+    }
+    return [];
+  });
+  const [customUrlInput, setCustomUrlInput] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [imageReusedNotice, setImageReusedNotice] = useState<string | null>(null);
@@ -119,39 +131,66 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
     } catch (_) {}
   };
 
-  const handleFileUpload = async (file: File) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setImageUploadError('Please select a valid image file (PNG, JPG, WebP, SVG, GIF)');
+  const handleFilesUpload = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+
+    const availableSlots = 4 - imageUrls.length;
+    if (availableSlots <= 0) {
+      setImageUploadError('Maximum of 4 images allowed per node');
       return;
     }
-    // Limit to 5MB
-    if (file.size > 5 * 1024 * 1024) {
-      setImageUploadError('Image size exceeds 5MB limit');
-      return;
+
+    const filesToUpload = files.slice(0, availableSlots);
+    if (files.length > availableSlots) {
+      setImageUploadError(`Only ${availableSlots} more image(s) can be added (max 4).`);
+    } else {
+      setImageUploadError(null);
+    }
+
+    for (const file of filesToUpload) {
+      if (!file.type.startsWith('image/')) {
+        setImageUploadError('Please select valid image files (PNG, JPG, WebP, SVG, GIF)');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setImageUploadError(`"${file.name}" exceeds 5MB limit`);
+        return;
+      }
     }
 
     setIsUploadingImage(true);
-    setImageUploadError(null);
     setImageReusedNotice(null);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
-        method: 'POST',
-        body: formData,
-      });
+      const uploadedUrls: string[] = [];
+      let anyReused = false;
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to upload image');
+      for (const file of filesToUpload) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to upload ${file.name}`);
+        }
+
+        const data = await res.json();
+        if (data.url) {
+          uploadedUrls.push(data.url);
+        }
+        if (data.reused) {
+          anyReused = true;
+        }
       }
 
-      const data = await res.json();
-      if (data.url) {
-        setImageUrl(data.url);
+      if (uploadedUrls.length > 0) {
+        setImageUrls(prev => [...prev, ...uploadedUrls].slice(0, 4));
       }
-      if (data.reused) {
+      if (anyReused) {
         setImageReusedNotice('Identical image matched by SHA-256 hash. Reused existing storage reference.');
       }
     } catch (err) {
@@ -163,6 +202,24 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
         fileInputRef.current.value = '';
       }
     }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setImageUrls(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    setImageUploadError(null);
+  };
+
+  const handleAddUrlImage = () => {
+    const trimmed = customUrlInput.trim();
+    if (!trimmed) return;
+    if (imageUrls.length >= 4) {
+      setImageUploadError('Maximum of 4 images allowed per node');
+      return;
+    }
+    setImageUrls(prev => [...prev, trimmed].slice(0, 4));
+    setCustomUrlInput('');
+    setShowUrlInput(false);
+    setImageUploadError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,7 +243,8 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
         status,
         priority,
         tags,
-        imageUrl: imageUrl || null,
+        imageUrl: imageUrls[0] || null,
+        imageUrls: imageUrls.slice(0, 4),
         autoShiftSubsequentDays: enableAutoShift ? autoShiftDays : undefined
       });
       onClose();
@@ -403,74 +461,118 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
             />
           </div>
 
-          {/* Node Image Attachment */}
-          <div className="space-y-2">
+          {/* Node Image Attachments (up to 4) */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-[#9e9ea7] font-medium flex items-center gap-1.5">
                 <ImageIcon className="w-3.5 h-3.5 text-[#9e9ea7]" />
-                <span>Image Attachment</span>
+                <span>Image Attachments ({imageUrls.length}/4)</span>
               </label>
-              <button
-                type="button"
-                onClick={() => setShowUrlInput(!showUrlInput)}
-                className="text-[10px] text-[#71717a] hover:text-[#ececf0] transition-colors flex items-center gap-1"
-              >
-                <LinkIcon className="w-2.5 h-2.5" />
-                <span>{showUrlInput ? 'Upload file' : 'Link via URL'}</span>
-              </button>
+              {imageUrls.length < 4 && (
+                <button
+                  type="button"
+                  onClick={() => setShowUrlInput(!showUrlInput)}
+                  className="text-[10px] text-[#71717a] hover:text-[#ececf0] transition-colors flex items-center gap-1"
+                >
+                  <LinkIcon className="w-2.5 h-2.5" />
+                  <span>{showUrlInput ? 'Upload files' : 'Link via URL'}</span>
+                </button>
+              )}
             </div>
 
-            {/* Hidden file input */}
+            {/* Hidden file input supporting multiple selection */}
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFileUpload(file);
+                if (e.target.files && e.target.files.length > 0) {
+                  handleFilesUpload(e.target.files);
+                }
               }}
             />
 
-            {/* Image Preview or Upload Dropzone */}
-            {imageUrl ? (
-              <div className="relative group rounded-md border border-[#2a2b32] bg-[#18191e] overflow-hidden p-2 flex items-center gap-3">
-                <div className="w-16 h-16 rounded border border-[#33343d] overflow-hidden bg-[#101114] flex-shrink-0 flex items-center justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageUrl}
-                    alt="Node attachment"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1 min-w-0 pr-8">
-                  <div className="text-[11px] text-[#ececf0] font-medium truncate">
-                    Attached Image
+            {/* Existing Images Gallery Grid */}
+            {imageUrls.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {imageUrls.map((url, idx) => (
+                  <div
+                    key={`${url}-${idx}`}
+                    className="relative group rounded-md border border-[#2a2b32] bg-[#101114] overflow-hidden"
+                  >
+                    {/* Thumbnail */}
+                    <div
+                      className="h-24 w-full cursor-pointer relative overflow-hidden bg-[#0a0a0c]"
+                      onClick={() => onPreviewImages?.(imageUrls, idx)}
+                      title="Click to view fullscreen"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`Attachment ${idx + 1}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                      {/* Hover Overlay with Preview Icon */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white">
+                        <Maximize2 className="w-4 h-4 drop-shadow" />
+                        <span className="text-[10px] font-mono font-medium drop-shadow">Preview</span>
+                      </div>
+                    </div>
+
+                    {/* Image index badge */}
+                    <span className="absolute left-1.5 top-1.5 px-1.5 py-0.5 rounded bg-black/70 border border-white/10 text-white font-mono text-[9px] font-semibold pointer-events-none">
+                      #{idx + 1}
+                    </span>
+
+                    {/* Remove button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveImage(idx);
+                      }}
+                      className="absolute right-1.5 top-1.5 p-1 rounded bg-[#101114]/85 text-[#9e9ea7] hover:text-red-400 hover:bg-black transition-colors border border-white/10"
+                      title="Remove image"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
-                  <div className="text-[10px] text-[#71717a] truncate mt-0.5" title={imageUrl}>
-                    {imageUrl}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setImageUrl(null)}
-                  className="absolute right-2 top-2 p-1.5 rounded bg-[#101114]/80 text-[#9e9ea7] hover:text-red-400 hover:bg-black transition-colors"
-                  title="Remove image"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                ))}
               </div>
-            ) : showUrlInput ? (
+            )}
+
+            {/* URL Input Form when active */}
+            {showUrlInput && imageUrls.length < 4 && (
               <div className="flex items-center gap-2">
                 <input
                   type="url"
                   placeholder="https://example.com/image.png"
-                  value={imageUrl || ''}
-                  onChange={(e) => setImageUrl(e.target.value)}
+                  value={customUrlInput}
+                  onChange={(e) => setCustomUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddUrlImage();
+                    }
+                  }}
                   className="flex-1 bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
                 />
+                <button
+                  type="button"
+                  onClick={handleAddUrlImage}
+                  disabled={!customUrlInput.trim()}
+                  className="px-3 py-2 rounded-md bg-[#252630] hover:bg-[#323340] text-[#ececf0] font-medium transition-colors border border-[#3a3b47] disabled:opacity-40 flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add</span>
+                </button>
               </div>
-            ) : (
+            )}
+
+            {/* Upload Dropzone (if less than 4 images) */}
+            {imageUrls.length < 4 ? (
               <div
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => {
@@ -480,10 +582,11 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
                 onDrop={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) handleFileUpload(file);
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFilesUpload(e.dataTransfer.files);
+                  }
                 }}
-                className={`border border-dashed border-[#2a2b32] hover:border-[#454754] rounded-md p-4 bg-[#18191e]/50 hover:bg-[#18191e] cursor-pointer flex flex-col items-center justify-center gap-1.5 transition-colors text-center ${
+                className={`border border-dashed border-[#2a2b32] hover:border-[#454754] rounded-md p-3.5 bg-[#18191e]/50 hover:bg-[#18191e] cursor-pointer flex flex-col items-center justify-center gap-1 transition-colors text-center ${
                   isUploadingImage ? 'opacity-60 pointer-events-none' : ''
                 }`}
               >
@@ -496,13 +599,19 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
                   <>
                     <Upload className="w-4 h-4 text-[#71717a]" />
                     <span className="text-[11px] text-[#ececf0] font-medium">
-                      Click to upload image or drag & drop
+                      {imageUrls.length === 0
+                        ? 'Click to upload up to 4 images (or drag & drop)'
+                        : `Upload more (${4 - imageUrls.length} slot${4 - imageUrls.length > 1 ? 's' : ''} remaining)`}
                     </span>
                     <span className="text-[10px] text-[#6b6c75]">
-                      PNG, JPG, WebP, GIF up to 5MB (Vercel Blob)
+                      PNG, JPG, WebP, GIF, SVG up to 5MB each
                     </span>
                   </>
                 )}
+              </div>
+            ) : (
+              <div className="text-center py-2 px-3 rounded border border-[#2a2b32] bg-[#18191e]/40 text-[#71717a] font-mono text-[11px]">
+                Maximum 4 images attached
               </div>
             )}
 

@@ -19,6 +19,7 @@ interface TimelineNodeCardProps {
   onDelete: (nodeId: string) => void;
   onMoveNode: (nodeId: string, newStartDate: string, newEndDate: string | null) => Promise<void>;
   onContextMenu?: (e: React.MouseEvent, node: TimelineNode) => void;
+  onPreviewImages?: (images: string[], index?: number) => void;
 }
 
 const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
@@ -34,7 +35,8 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   onBranchFromNode,
   onDelete,
   onMoveNode,
-  onContextMenu
+  onContextMenu,
+  onPreviewImages
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -447,6 +449,50 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
           </div>
         )}
 
+        {/* Images Preview Grid (up to 4 images) */}
+        {(() => {
+          const cardImages = node.imageUrls && node.imageUrls.length > 0
+            ? node.imageUrls
+            : node.imageUrl
+            ? [node.imageUrl]
+            : [];
+          if (cardImages.length === 0) return null;
+
+          return (
+            <div
+              className={`mt-1.5 rounded-md overflow-hidden border border-[#2a2b32] bg-[#101114] ${
+                cardImages.length === 1
+                  ? 'h-16 w-full'
+                  : cardImages.length === 2
+                  ? 'grid grid-cols-2 gap-0.5 h-14 w-full'
+                  : cardImages.length === 3
+                  ? 'grid grid-cols-3 gap-0.5 h-12 w-full'
+                  : 'grid grid-cols-2 gap-0.5 h-16 w-full'
+              }`}
+            >
+              {cardImages.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative h-full w-full overflow-hidden group/img cursor-pointer bg-[#0a0a0c]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPreviewImages?.(cardImages, idx);
+                  }}
+                  title="Click to view image fullscreen"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img}
+                    alt={`Attachment ${idx + 1}`}
+                    className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-150"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Footer */}
         <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-[#222328]">
           <div className="flex items-center gap-1 overflow-hidden">
@@ -466,11 +512,28 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
           </div>
 
           <div className="flex items-center gap-1 font-mono text-[10px] text-[#9e9ea7]">
-            {node.imageUrl && (
-              <span title="Contains image attachment" className="flex items-center">
-                <ImageIcon className="w-3 h-3 text-[#9e9ea7] hover:text-[#ececf0] transition-colors" />
-              </span>
-            )}
+            {(() => {
+              const cardImages = node.imageUrls && node.imageUrls.length > 0
+                ? node.imageUrls
+                : node.imageUrl
+                ? [node.imageUrl]
+                : [];
+              if (cardImages.length === 0) return null;
+
+              return (
+                <span
+                  title={`${cardImages.length} image attachment${cardImages.length > 1 ? 's' : ''} (click to preview)`}
+                  className="flex items-center gap-0.5 text-[#9e9ea7] hover:text-[#ececf0] transition-colors cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPreviewImages?.(cardImages, 0);
+                  }}
+                >
+                  <ImageIcon className="w-3 h-3" />
+                  {cardImages.length > 1 && <span>{cardImages.length}</span>}
+                </span>
+              );
+            })()}
             {node.priority === 'high' && (
               <span className="w-1.5 h-1.5 rounded-full bg-[#ececf0]" title="High Priority" />
             )}

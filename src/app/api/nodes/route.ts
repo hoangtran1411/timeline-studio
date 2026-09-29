@@ -17,6 +17,7 @@ export async function POST(request: Request) {
       priority: body.priority,
       tags: body.tags,
       imageUrl: body.imageUrl,
+      imageUrls: body.imageUrls,
       autoShiftSubsequentDays: body.autoShiftSubsequentDays
     });
     return NextResponse.json(node);

@@ -39,6 +39,7 @@ interface ChronoCanvasProps {
   onDuplicateNode?: (node: TimelineNode) => void;
   onChangeNodeStatus?: (nodeId: string, status: NodeStatus) => void;
   onResetZoom?: () => void;
+  onPreviewImages?: (images: string[], index?: number) => void;
 }
 
 export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
@@ -64,7 +65,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   onSelectTrack,
   onDuplicateNode,
   onChangeNodeStatus,
-  onResetZoom
+  onResetZoom,
+  onPreviewImages
 }, ref) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const leftDockScrollRef = useRef<HTMLDivElement>(null);
@@ -628,6 +630,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                         onDelete={onDeleteNode}
                         onMoveNode={onMoveNode}
                         onContextMenu={(e, n) => handleNodeContextMenu(e, n, track)}
+                        onPreviewImages={onPreviewImages}
                       />
                     );
                   })}
