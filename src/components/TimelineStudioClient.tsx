@@ -8,6 +8,9 @@ import { ChronoCanvas, ChronoCanvasRef } from '@/components/ChronoCanvas';
 import { ComparisonMatrix } from '@/components/ComparisonMatrix';
 import { parseDate, getMidpointDate, addDays, formatDateStr } from '@/utils/date-utils';
 
+import { ImageLightboxModal } from '@/components/ImageLightboxModal';
+import { useTimelineShortcuts } from '@/hooks/useTimelineShortcuts';
+
 // Dynamic code-split imports for heavy dialogs/drawers to keep initial LCP bundle minimal
 const NodeDrawer = dynamic(() => import('@/components/NodeDrawer').then(m => m.NodeDrawer), {
   ssr: false
@@ -25,7 +28,7 @@ const ProjectModal = dynamic(() => import('@/components/ProjectModal').then(m =>
   ssr: false
 });
 
-const ImageLightboxModal = dynamic(() => import('@/components/ImageLightboxModal').then(m => m.ImageLightboxModal), {
+const ShortcutsModal = dynamic(() => import('@/components/ShortcutsModal').then(m => m.ShortcutsModal), {
   ssr: false
 });
 
@@ -45,6 +48,8 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   const [loading, setLoading] = useState(false);
   const [zoom, setZoom] = useState(1.0);
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
 
   // Fullscreen Image Lightbox Preview Modal State
   const [lightboxImages, setLightboxImages] = useState<string[] | null>(null);
@@ -609,6 +614,60 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
     });
   };
 
+  const allNodes = useMemo(() => data.timelines.flatMap(t => t.nodes), [data.timelines]);
+
+  // Global Ergonomic Keyboard Shortcuts
+  useTimelineShortcuts({
+    onCenterToday: () => canvasRef.current?.scrollToToday(),
+    onScrollToStart: () => canvasRef.current?.scrollToStart(),
+    onZoomIn: () => setZoom(prev => Math.min(1.6, +(prev + 0.15).toFixed(2))),
+    onZoomOut: () => setZoom(prev => Math.max(0.6, +(prev - 0.15).toFixed(2))),
+    onResetZoom: () => setZoom(1.0),
+    onToggleGrid: handleToggleGrid,
+    onToggleBottomPanel: () => {
+      setIsBottomCollapsed(prev => {
+        const next = !prev;
+        try {
+          localStorage.setItem('timeline_studio_bottom_collapsed', String(next));
+        } catch (_) {}
+        return next;
+      });
+    },
+    onFocusSearch: () => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    },
+    onOpenShortcuts: () => setIsShortcutsModalOpen(true),
+    onOpenAddNode: () => handleOpenAddNode(data.timelines[0]?.id),
+    onOpenAddTimeline: () => {
+      setPreselectedParentId(null);
+      setPreselectedBranchNodeId(null);
+      setIsTimelineModalOpen(true);
+    },
+    onOpenCreateProject: handleOpenCreateProject,
+    selectedNode,
+    onSelectNode: (node) => setSelectedNode(node),
+    onEditSelectedNode: () => {
+      if (selectedNode) {
+        setIsNodeDrawerOpen(true);
+      }
+    },
+    onDuplicateSelectedNode: handleDuplicateNode,
+    onChangeNodeStatus: handleChangeNodeStatus,
+    onDeleteSelectedNode: handleDeleteNode,
+    onBranchFromNode: (timelineId, nodeId) => {
+      handleOpenBranchModal(timelineId, nodeId);
+    },
+    allNodes,
+    isAnyModalOpen:
+      isNodeDrawerOpen ||
+      isTimelineModalOpen ||
+      isArchiveModalOpen ||
+      isProjectModalOpen ||
+      isShortcutsModalOpen ||
+      Boolean(lightboxImages && lightboxImages.length > 0)
+  });
+
   return (
     <div className="h-screen bg-[#101114] flex flex-col overflow-hidden relative">
       {/* Top subtle progress indicator during project switches (avoids full-screen blocking) */}
@@ -643,6 +702,8 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
         onOpenArchiveModal={() => setIsArchiveModalOpen(true)}
         hiddenCount={data.timelines.filter(t => t.isVisible === false).length}
         onShowAllTracks={handleShowAllTracks}
+        onOpenShortcuts={() => setIsShortcutsModalOpen(true)}
+        searchInputRef={searchInputRef}
       />
 
       {/* Main Interactive Canvas & Bottom Panel Container */}
@@ -782,6 +843,12 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
         images={lightboxImages || []}
         initialIndex={lightboxIndex}
         onClose={handleCloseLightbox}
+      />
+
+      {/* Keyboard Shortcuts Cheat Sheet Modal */}
+      <ShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
       />
     </div>
   );

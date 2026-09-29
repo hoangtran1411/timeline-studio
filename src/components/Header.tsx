@@ -17,7 +17,8 @@ import {
   Pencil,
   FolderPlus,
   Check,
-  SkipBack
+  SkipBack,
+  Keyboard
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -42,6 +43,8 @@ interface HeaderProps {
   onOpenArchiveModal?: () => void;
   hiddenCount?: number;
   onShowAllTracks?: () => void;
+  onOpenShortcuts?: () => void;
+  searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 export function renderProjectIcon(icon?: string | null): string {
@@ -78,7 +81,9 @@ export const Header: React.FC<HeaderProps> = ({
   archivedCount = 0,
   onOpenArchiveModal,
   hiddenCount = 0,
-  onShowAllTracks
+  onShowAllTracks,
+  onOpenShortcuts,
+  searchInputRef
 }) => {
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -133,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'bg-[#1e2029] border-[#424453] ring-1 ring-[#525568]'
                   : 'bg-[#16171b] hover:bg-[#1c1d23] border-[#2a2b34] hover:border-[#3e404e]'
               }`}
-              title="Click to switch or manage project workspaces"
+              title="Click to switch or manage project workspaces (P)"
             >
               <span className="text-base flex-shrink-0 leading-none">
                 {renderProjectIcon(currentProject?.icon)}
@@ -254,12 +259,16 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative w-44 lg:w-60">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#71717a]" />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="Filter nodes..."
+              placeholder="Filter nodes... (/)"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full bg-[#16171b] border border-[#222328] rounded-md pl-8 pr-3 py-1.5 text-xs text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#3e404b] transition-colors"
+              className="w-full bg-[#16171b] border border-[#222328] rounded-md pl-8 pr-7 py-1.5 text-xs text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#3e404b] transition-colors font-mono"
             />
+            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#202128] border border-[#2e303a] text-[10px] text-[#71717a] font-mono pointer-events-none hidden sm:inline-block">
+              /
+            </kbd>
           </div>
 
           {/* Canvas Zoom & Navigation */}
@@ -267,17 +276,17 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={() => onZoomChange(Math.max(0.6, zoom - 0.15))}
               className="p-1 rounded text-[#9e9ea7] hover:text-white hover:bg-[#202127] transition-colors"
-              title="Zoom out"
+              title="Zoom out (-)"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="text-[11px] font-mono text-[#9e9ea7] px-2 select-none">
+            <span className="text-[11px] font-mono text-[#9e9ea7] px-2 select-none" title="Reset zoom (0)">
               {Math.round(zoom * 100)}%
             </span>
             <button
               onClick={() => onZoomChange(Math.min(1.6, zoom + 0.15))}
               className="p-1 rounded text-[#9e9ea7] hover:text-white hover:bg-[#202127] transition-colors"
-              title="Zoom in"
+              title="Zoom in (+)"
             >
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
@@ -288,7 +297,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onScrollToStart}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#222328] bg-[#16171b] hover:bg-[#202127] text-xs text-[#9e9ea7] hover:text-[#ececf0] transition-colors font-mono cursor-pointer"
-              title="Scroll to beginning of timeline (Đầu mốc thời gian)"
+              title="Scroll to beginning of timeline (S)"
             >
               <SkipBack className="w-3.5 h-3.5 text-[#9e9ea7]" />
               <span>Start</span>
@@ -298,7 +307,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onCenterToday}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#222328] bg-[#16171b] hover:bg-[#202127] text-xs text-[#9e9ea7] hover:text-[#ececf0] transition-colors font-mono cursor-pointer"
-            title="Scroll to Today marker"
+            title="Scroll to Today marker (H)"
           >
             <Calendar className="w-3.5 h-3.5" />
             <span>Today</span>
@@ -312,7 +321,7 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'border-[#383a42] bg-[#1c1d22] text-[#ececf0]'
                 : 'border-[#222328] bg-[#16171b] text-[#9e9ea7] hover:text-[#ececf0]'
             }`}
-            title={`Canvas Grid Style: ${gridStyle === 'notebook' ? 'Notebook Graph Paper (Kẻ ô vở)' : gridStyle === 'dots' ? 'Dot Grid' : 'Plain'} (Click to toggle)`}
+            title={`Canvas Grid Style: ${gridStyle === 'notebook' ? 'Notebook Graph Paper (Kẻ ô vở)' : gridStyle === 'dots' ? 'Dot Grid' : 'Plain'} (G)`}
           >
             <Grid3X3 className="w-3.5 h-3.5 text-[#9e9ea7]" />
             <span className="capitalize">{gridStyle === 'notebook' ? 'Notebook' : gridStyle}</span>
@@ -346,12 +355,24 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
+          {/* Keyboard Shortcuts Cheat Sheet Button */}
+          {onOpenShortcuts && (
+            <button
+              onClick={onOpenShortcuts}
+              className="p-1.5 rounded-md border border-[#222328] bg-[#16171b] hover:bg-[#202127] text-xs text-[#9e9ea7] hover:text-[#ececf0] transition-colors font-mono cursor-pointer"
+              title="Keyboard Shortcuts (? or ⌘/)"
+            >
+              <Keyboard className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           <div className="h-4 w-px bg-[#222328]" />
 
           {/* New Timeline Button */}
           <button
             onClick={onOpenAddTimeline}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#2a2b32] bg-[#1c1d22] hover:bg-[#24252c] text-xs font-medium text-[#ececf0] transition-all hover:border-[#3e404b]"
+            title="Create new timeline track (T)"
           >
             <GitFork className="w-3.5 h-3.5 text-[#9e9ea7]" />
             <span>+ Timeline</span>
@@ -361,6 +382,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenAddNode}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#ffffff] hover:bg-[#e4e4e7] text-black text-xs font-medium transition-all shadow-sm"
+            title="Create new milestone node (N or C)"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Node</span>
