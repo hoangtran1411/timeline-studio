@@ -39,8 +39,8 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   onDelete,
   onMoveNode,
   onContextMenu,
-  onPreviewImages,
-  onUpdateCustomWidth
+  onPreviewImages: _onPreviewImages,
+  onUpdateCustomWidth,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -53,7 +53,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   const [showLockNotice, setShowLockNotice] = useState(false);
   const lockNoticeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isLocked = node.status === 'completed' && !isUnlocked;
+  const isLocked = node.status === "completed" && !isUnlocked;
 
   const triggerLockNotice = () => {
     setShowLockNotice(true);
@@ -67,22 +67,21 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
 
   const pointerState = useRef<{
     startX: number;
-    mode: 'move' | 'resize';
+    mode: "move" | "resize";
     isActualAction: boolean;
   } | null>(null);
-
 
   // Drag-to-move pointer handlers
   const handlePointerDownMove = (e: React.PointerEvent<HTMLDivElement>) => {
     // Only respond to primary (left) button for dragging & selection! Ignore right click (button 2)
     if (e.button !== 0) return;
-    if ((e.target as HTMLElement).closest('button')) return;
+    if ((e.target as HTMLElement).closest("button")) return;
     e.stopPropagation();
 
     pointerState.current = {
       startX: e.clientX,
-      mode: 'move',
-      isActualAction: false
+      mode: "move",
+      isActualAction: false,
     };
 
     try {
@@ -100,8 +99,8 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
 
     pointerState.current = {
       startX: e.clientX,
-      mode: 'resize',
-      isActualAction: true
+      mode: "resize",
+      isActualAction: true,
     };
     setIsResizing(true);
   };
@@ -128,7 +127,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
       }
       const delta = clientX - pointerState.current.startX;
 
-      if (pointerState.current.mode === 'move') {
+      if (pointerState.current.mode === "move") {
         if (isLocked) {
           if (Math.abs(delta) > 4) {
             triggerLockNotice();
@@ -144,7 +143,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
         if (pointerState.current.isActualAction) {
           setDragDeltaX(delta);
         }
-      } else if (pointerState.current.mode === 'resize') {
+      } else if (pointerState.current.mode === "resize") {
         setResizeDeltaW(delta);
       }
       nodeMoveRafId.current = null;
@@ -167,7 +166,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (_) {}
 
-    if (state.mode === 'move') {
+    if (state.mode === "move") {
       const moveDistance = Math.abs(e.clientX - state.startX);
       if (state.isActualAction && !isLocked) {
         const daysShift = Math.round(dragDeltaX / pxPerDay);
@@ -183,7 +182,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
         // Click on locked card opens edit drawer
         onSelect(node);
       }
-    } else if (state.mode === 'resize') {
+    } else if (state.mode === "resize") {
       const finalWidth = Math.max(160, Math.min(900, baseWidth + resizeDeltaW));
       onUpdateCustomWidth?.(node.id, finalWidth);
     }
@@ -201,10 +200,18 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
 
   // Dynamic preview date calculation during drag
   const currentDaysShift = isDragging ? Math.round(dragDeltaX / pxPerDay) : 0;
-  const previewStartDate = isDragging ? addDays(node.startDate, currentDaysShift) : node.startDate;
-  const previewEndDate = isDragging && node.endDate ? addDays(node.endDate, currentDaysShift) : node.endDate;
+  const previewStartDate = isDragging
+    ? addDays(node.startDate, currentDaysShift)
+    : node.startDate;
+  const previewEndDate =
+    isDragging && node.endDate
+      ? addDays(node.endDate, currentDaysShift)
+      : node.endDate;
 
-  const currentWidth = Math.max(160, Math.min(900, baseWidth + (isResizing ? resizeDeltaW : 0)));
+  const currentWidth = Math.max(
+    160,
+    Math.min(900, baseWidth + (isResizing ? resizeDeltaW : 0)),
+  );
   const effectiveLeft = pixelLeft + (isDragging ? dragDeltaX : 0);
   const topOffset = 56 + lane * 130;
 
@@ -212,13 +219,14 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   // Active dragging/resizing moves to top of track stack (10000).
   // Hovered (+200) and Selected (+100) apply relative lane-safe boosts so that
   // interacting with a lower-lane card never causes its hanger stem to pierce through upper-lane cards.
-  const computedZIndex = isDragging || isResizing
-    ? 10000
-    : isHovered
-    ? zIndex + 200
-    : isSelected
-    ? zIndex + 100
-    : zIndex;
+  const computedZIndex =
+    isDragging || isResizing
+      ? 10000
+      : isHovered
+        ? zIndex + 200
+        : isSelected
+          ? zIndex + 100
+          : zIndex;
 
   return (
     <div
@@ -226,14 +234,14 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
         left: `${effectiveLeft}px`,
         top: `${topOffset}px`,
         width: `${currentWidth}px`,
-        zIndex: computedZIndex
+        zIndex: computedZIndex,
       }}
       className={`absolute group select-none rounded-lg border transition-shadow duration-75 shadow-sm ${
         isDragging
-          ? 'bg-[#22232a] border-[#ffffff] shadow-2xl cursor-grabbing scale-[1.02]'
+          ? "bg-[#22232a] border-[#ffffff] shadow-2xl cursor-grabbing scale-[1.02]"
           : isSelected
-          ? `bg-[#22232a] border-[#ffffff] ring-1 ring-[#ffffff]/20 shadow-md ${isLocked ? 'cursor-default' : 'cursor-grab'}`
-          : `bg-[#18191e] border-[#2a2b32] hover:bg-[#1f2027] hover:border-[#454754] hover:shadow-xl ${isLocked ? 'cursor-default' : 'cursor-grab'}`
+            ? `bg-[#22232a] border-[#ffffff] ring-1 ring-[#ffffff]/20 shadow-md ${isLocked ? "cursor-default" : "cursor-grab"}`
+            : `bg-[#18191e] border-[#2a2b32] hover:bg-[#1f2027] hover:border-[#454754] hover:shadow-xl ${isLocked ? "cursor-default" : "cursor-grab"}`
       }`}
       onPointerDown={handlePointerDownMove}
       onPointerMove={handlePointerMove}
@@ -251,67 +259,68 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
         className="absolute left-[23px] -translate-x-1/2 pointer-events-none select-none flex flex-col items-center w-5"
         style={{
           top: `-${29 + lane * 130}px`,
-          height: `${29 + lane * 130}px`
+          height: `${29 + lane * 130}px`,
         }}
       >
         {/* Knot Peg clamped on the timeline wire */}
         <div
           onClick={(e) => {
-            if (node.status === 'completed') {
+            if (node.status === "completed") {
               e.stopPropagation();
               setIsUnlocked(!isUnlocked);
             }
           }}
           className={`w-5 h-5 -mt-2.5 rounded-full flex items-center justify-center transition-transform shadow-md z-30 pointer-events-auto ${
-            node.status === 'completed' ? 'cursor-pointer' : ''
+            node.status === "completed" ? "cursor-pointer" : ""
           } ${
-            node.status === 'completed'
+            node.status === "completed"
               ? isLocked
-                ? 'bg-[#ececf0] text-[#101114] ring-2 ring-[#101114]'
-                : 'bg-[#181920] text-[#ececf0] border-2 border-white ring-1 ring-[#101114]'
-              : node.status === 'in_progress'
-              ? 'bg-[#181920] border-2 border-white ring-1 ring-[#101114]'
-              : node.status === 'blocked'
-              ? 'bg-[#1c1d22] border-2 border-dashed border-[#9e9ea7]'
-              : 'bg-[#141519] border-2 border-[#52525b]'
-          } ${isHovered ? 'scale-110' : ''}`}
+                ? "bg-[#ececf0] text-[#101114] ring-2 ring-[#101114]"
+                : "bg-[#181920] text-[#ececf0] border-2 border-white ring-1 ring-[#101114]"
+              : node.status === "in_progress"
+                ? "bg-[#181920] border-2 border-white ring-1 ring-[#101114]"
+                : node.status === "blocked"
+                  ? "bg-[#1c1d22] border-2 border-dashed border-[#9e9ea7]"
+                  : "bg-[#141519] border-2 border-[#52525b]"
+          } ${isHovered ? "scale-110" : ""}`}
           title={
-            node.status === 'completed'
+            node.status === "completed"
               ? isLocked
-                ? 'Completed milestone is locked on branch wire — click to unlock and move'
-                : 'Completed milestone is unlocked — click to lock'
+                ? "Completed milestone is locked on branch wire — click to unlock and move"
+                : "Completed milestone is unlocked — click to lock"
               : `Milestone Status: ${node.status}`
           }
         >
-          {node.status === 'completed' && (
-            isLocked ? (
+          {node.status === "completed" &&
+            (isLocked ? (
               <Lock className="w-2.5 h-2.5 stroke-[2.5]" />
             ) : (
               <Check className="w-3 h-3 stroke-[3]" />
-            )
-          )}
-          {node.status === 'in_progress' && (
+            ))}
+          {node.status === "in_progress" && (
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
             </span>
           )}
-          {node.status === 'planned' && (
+          {node.status === "planned" && (
             <span className="w-1.5 h-1.5 rounded-full bg-[#71717a]" />
           )}
-          {node.status === 'blocked' && (
-            <span className="text-[10px] font-bold text-[#ececf0] leading-none">!</span>
+          {node.status === "blocked" && (
+            <span className="text-[10px] font-bold text-[#ececf0] leading-none">
+              !
+            </span>
           )}
         </div>
 
         {/* Vertical Hanger / Hook Stem (Dotted connector line from knot to card) */}
         <div
           className={`w-0 flex-1 border-l border-dashed transition-colors ${
-            node.status === 'completed'
-              ? 'border-[#ececf0]/75'
-              : node.status === 'in_progress'
-              ? 'border-white/60'
-              : 'border-[#52525b]'
+            node.status === "completed"
+              ? "border-[#ececf0]/75"
+              : node.status === "in_progress"
+                ? "border-white/60"
+                : "border-[#52525b]"
           }`}
         />
 
@@ -325,15 +334,17 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
       {isDragging && (
         <div className="absolute -top-7 left-0 px-2 py-0.5 rounded bg-[#ffffff] text-black font-mono text-[10px] font-bold shadow-lg pointer-events-none whitespace-nowrap z-50">
           {formatDisplayDate(previewStartDate)}
-          {previewEndDate ? ' – ' + formatDisplayDate(previewEndDate) : ''}
-          {' '}({currentDaysShift >= 0 ? '+' : ''}{currentDaysShift}d)
+          {previewEndDate ? " – " + formatDisplayDate(previewEndDate) : ""} (
+          {currentDaysShift >= 0 ? "+" : ""}
+          {currentDaysShift}d)
         </div>
       )}
 
       {/* Live card width resize indicator (persisted in localStorage) */}
       {isResizing && (
         <div className="absolute -top-7 right-0 px-2 py-0.5 rounded bg-[#ececf0] text-black font-mono text-[10px] font-bold shadow-lg pointer-events-none whitespace-nowrap z-50">
-          Width: {currentWidth}px ({resizeDeltaW >= 0 ? '+' : ''}{resizeDeltaW}px)
+          Width: {currentWidth}px ({resizeDeltaW >= 0 ? "+" : ""}
+          {resizeDeltaW}px)
         </div>
       )}
 
@@ -349,7 +360,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
         {/* Top Header */}
         <div className="flex items-center justify-between gap-1.5 mb-1.5">
           <div className="flex items-center gap-1.5 min-w-0">
-            {node.status === 'completed' ? (
+            {node.status === "completed" ? (
               <button
                 type="button"
                 onClick={(e) => {
@@ -358,13 +369,13 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
                 }}
                 className={`p-1 -ml-1 rounded transition-colors flex items-center justify-center flex-shrink-0 ${
                   isLocked
-                    ? 'text-[#ececf0] hover:bg-[#2a2b34] hover:text-white'
-                    : 'text-[#9e9ea7] hover:bg-[#2a2b34] hover:text-[#ececf0]'
+                    ? "text-[#ececf0] hover:bg-[#2a2b34] hover:text-white"
+                    : "text-[#9e9ea7] hover:bg-[#2a2b34] hover:text-[#ececf0]"
                 }`}
                 title={
                   isLocked
-                    ? 'Completed milestone is locked — click to unlock and move'
-                    : 'Milestone unlocked — click to lock'
+                    ? "Completed milestone is locked — click to unlock and move"
+                    : "Milestone unlocked — click to lock"
                 }
               >
                 {isLocked ? (
@@ -385,22 +396,28 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
           {/* Quick inline hover actions */}
           <div
             className={`flex items-center gap-0.5 transition-opacity ${
-              isHovered && !isDragging ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              isHovered && !isDragging
+                ? "opacity-100"
+                : "opacity-0 pointer-events-none"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            {node.status === 'completed' && (
+            {node.status === "completed" && (
               <button
                 type="button"
                 onClick={() => setIsUnlocked(!isUnlocked)}
                 className={`p-1 rounded transition-colors ${
                   isLocked
-                    ? 'text-[#ececf0] hover:bg-[#2a2b34]'
-                    : 'text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#2a2b34]'
+                    ? "text-[#ececf0] hover:bg-[#2a2b34]"
+                    : "text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#2a2b34]"
                 }`}
-                title={isLocked ? 'Unlock milestone to move' : 'Lock milestone'}
+                title={isLocked ? "Unlock milestone to move" : "Lock milestone"}
               >
-                {isLocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                {isLocked ? (
+                  <Unlock className="w-3 h-3" />
+                ) : (
+                  <Lock className="w-3 h-3" />
+                )}
               </button>
             )}
             <button
@@ -446,29 +463,6 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
           </div>
         )}
 
-        {/* Attachment Cover Image Preview */}
-        {Boolean(node.imageUrl || (node.imageUrls && node.imageUrls.length > 0)) && (
-          <div
-            className="mt-2 rounded overflow-hidden h-20 w-full bg-[#0a0a0c] border border-[#222328] relative group/thumb cursor-pointer select-none"
-            onClick={(e) => {
-              e.stopPropagation();
-              const imgs = (node.imageUrls && node.imageUrls.length > 0)
-                ? node.imageUrls
-                : (node.imageUrl ? [node.imageUrl] : []);
-              onPreviewImages?.(imgs, 0);
-            }}
-            title="Click to view image attachment"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={node.imageUrl || node.imageUrls?.[0]}
-              alt={node.title}
-              className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform duration-200"
-              loading="lazy"
-            />
-          </div>
-        )}
-
         {/* Footer */}
         <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-[#222328]">
           <div className="flex items-center gap-1 overflow-hidden">
@@ -477,7 +471,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
                 key={idx}
                 className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#121316] border border-[#222328] text-[#9e9ea7] truncate"
               >
-                {tag.startsWith('#') ? tag : `#${tag}`}
+                {tag.startsWith("#") ? tag : `#${tag}`}
               </span>
             ))}
             {node.tags.length > 2 && (
@@ -489,14 +483,17 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
 
           <div className="flex items-center gap-1 font-mono text-[10px] text-[#9e9ea7]">
             {(() => {
-              const count = (node.imageUrls && node.imageUrls.length > 0)
-                ? node.imageUrls.length
-                : (node.imageUrl ? 1 : 0);
+              const count =
+                node.imageUrls && node.imageUrls.length > 0
+                  ? node.imageUrls.length
+                  : node.imageUrl
+                    ? 1
+                    : 0;
               if (count === 0) return null;
 
               return (
                 <span
-                  title={`${count} image attachment${count > 1 ? 's' : ''}`}
+                  title={`${count} image attachment${count > 1 ? "s" : ""}`}
                   className="flex items-center gap-0.5 text-[#9e9ea7]"
                 >
                   <ImageIcon className="w-3 h-3 text-[#9e9ea7]" />
@@ -504,18 +501,24 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
                 </span>
               );
             })()}
-            {node.priority === 'high' && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[#ececf0]" title="High Priority" />
+            {node.priority === "high" && (
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-[#ececf0]"
+                title="High Priority"
+              />
             )}
-            {node.priority === 'medium' && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[#9e9ea7]" title="Medium Priority" />
+            {node.priority === "medium" && (
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-[#9e9ea7]"
+                title="Medium Priority"
+              />
             )}
             {isLocked && (
               <span title="Locked milestone">
                 <Lock className="w-2.5 h-2.5 text-[#ececf0]" />
               </span>
             )}
-            <span className="capitalize">{node.status.replace('_', ' ')}</span>
+            <span className="capitalize">{node.status.replace("_", " ")}</span>
           </div>
         </div>
       </div>
@@ -523,7 +526,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
       {/* Right Edge Drag-to-Resize Handle (Always available by default, persists to localStorage) */}
       <div
         className={`absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize z-20 flex items-center justify-end pr-0.5 transition-colors group/resize rounded-r-lg ${
-          isResizing ? 'bg-[#ececf0]/20' : 'hover:bg-[#ececf0]/15'
+          isResizing ? "bg-[#ececf0]/20" : "hover:bg-[#ececf0]/15"
         }`}
         title="Drag right edge to resize card width (Double-click to reset) — saved in localStorage"
         onPointerDown={handlePointerDownResize}
@@ -534,8 +537,8 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
         <div
           className={`w-0.5 rounded-full transition-all ${
             isResizing
-              ? 'h-8 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]'
-              : 'h-4 bg-[#9e9ea7] group-hover/resize:bg-[#ececf0] group-hover/resize:h-6'
+              ? "h-8 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
+              : "h-4 bg-[#9e9ea7] group-hover/resize:bg-[#ececf0] group-hover/resize:h-6"
           }`}
         />
       </div>

@@ -630,6 +630,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   const [bottomPanelHeight, setBottomPanelHeight] = useState<number>(250);
   const [isBottomCollapsed, setIsBottomCollapsed] = useState<boolean>(false);
   const [gridStyle, setGridStyle] = useState<'notebook' | 'dots' | 'plain'>('notebook');
+  const [shouldLoadMatrix, setShouldLoadMatrix] = useState<boolean>(false);
 
   useEffect(() => {
     let idleId: number | null = null;
@@ -655,6 +656,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
           setGridStyle(savedGrid as 'notebook' | 'dots' | 'plain');
         }
       } catch (_) {}
+      setShouldLoadMatrix(true);
     };
 
     if (typeof window !== 'undefined') {
@@ -888,25 +890,32 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
           </div>
         </div>
 
-        {/* Multi-Timeline Comparative Matrix */}
-        <ComparisonMatrix
-          timelines={data.timelines}
-          height={bottomPanelHeight}
-          isCollapsed={isBottomCollapsed}
-          onToggleCollapse={() => {
-            setIsBottomCollapsed(prev => {
-              const next = !prev;
-              try {
-                localStorage.setItem('timeline_studio_bottom_collapsed', String(next));
-              } catch (_) {}
-              return next;
-            });
-          }}
-          onSelectNode={(node) => {
-            setSelectedNode(node);
-            setIsNodeDrawerOpen(true);
-          }}
-        />
+        {/* Multi-Timeline Comparative Matrix (Deferred to idle time to minimize main-thread work) */}
+        {shouldLoadMatrix ? (
+          <ComparisonMatrix
+            timelines={data.timelines}
+            height={bottomPanelHeight}
+            isCollapsed={isBottomCollapsed}
+            onToggleCollapse={() => {
+              setIsBottomCollapsed(prev => {
+                const next = !prev;
+                try {
+                  localStorage.setItem('timeline_studio_bottom_collapsed', String(next));
+                } catch (_) {}
+                return next;
+              });
+            }}
+            onSelectNode={(node) => {
+              setSelectedNode(node);
+              setIsNodeDrawerOpen(true);
+            }}
+          />
+        ) : (
+          <div
+            style={{ height: isBottomCollapsed ? '44px' : `${bottomPanelHeight}px` }}
+            className="w-full bg-[#121316] border-t border-[#222328] flex items-center justify-center font-mono text-xs text-[#9e9ea7]"
+          />
+        )}
       </main>
 
       {/* Node Create & Edit Drawer */}

@@ -60,7 +60,7 @@ export function renderProjectIcon(icon?: string | null): string {
   return icon;
 }
 
-export const Header: React.FC<HeaderProps> = ({
+const HeaderComponent: React.FC<HeaderProps> = ({
   projects = [],
   currentProject,
   onSelectProject,
@@ -392,3 +392,5 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+
+export const Header = React.memo(HeaderComponent);

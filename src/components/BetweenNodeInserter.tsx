@@ -13,7 +13,7 @@ interface BetweenNodeInserterProps {
   onInsertBetween: (timelineId: string, leftNode: TimelineNode, rightNode: TimelineNode) => void;
 }
 
-export const BetweenNodeInserter: React.FC<BetweenNodeInserterProps> = ({
+const BetweenNodeInserterComponent: React.FC<BetweenNodeInserterProps> = ({
   timelineId,
   leftNode,
   rightNode,
@@ -61,3 +61,5 @@ export const BetweenNodeInserter: React.FC<BetweenNodeInserterProps> = ({
     </div>
   );
 };
+
+export const BetweenNodeInserter = React.memo(BetweenNodeInserterComponent);

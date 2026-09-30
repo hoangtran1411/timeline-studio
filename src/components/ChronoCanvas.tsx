@@ -646,7 +646,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                   onContextMenu={(e) => handleTrackContextMenu(e, track)}
                 >
                   {/* Render Gap Inserters between adjacent nodes (active or hovered tracks) */}
-                  {(!selectedTrackId || isSelectedTrack || isHoveredTrack) && sortedNodes.map((currNode, idx) => {
+                  {(isSelectedTrack || isHoveredTrack) && sortedNodes.map((currNode, idx) => {
                     if (idx === sortedNodes.length - 1) return null;
                     const nextNode = sortedNodes[idx + 1];
 

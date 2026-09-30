@@ -10,7 +10,7 @@ interface ChronoRulerProps {
   todayDateStr: string;
 }
 
-export const ChronoRuler: React.FC<ChronoRulerProps> = ({
+const ChronoRulerComponent: React.FC<ChronoRulerProps> = ({
   originDate,
   totalDays,
   pxPerDay,
@@ -181,3 +181,5 @@ export const ChronoRuler: React.FC<ChronoRulerProps> = ({
     </div>
   );
 };
+
+export const ChronoRuler = React.memo(ChronoRulerComponent);

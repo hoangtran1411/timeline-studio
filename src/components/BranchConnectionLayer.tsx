@@ -346,13 +346,11 @@ const BranchConnectionLayerComponent: React.FC<BranchConnectionLayerProps> = ({
 
   // 4. Calculate continuous path and calibrated motion speed along clothesline wire for traveling light beams
   const activeTrackBeams = React.useMemo(() => {
-    // If a specific track is selected or hovered, focus exclusively on that one
+    // Only animate traveling light beams when a specific track is hovered or selected to prevent main-thread rendering churn
     const focusedTrackId = hoveredTrackId || selectedTrackId;
+    if (!focusedTrackId) return [];
 
-    // In Track All mode, animate all visible tracks with nodes; otherwise animate only the focused track
-    const tracksToAnimate = focusedTrackId
-      ? timelines.filter((t) => t.id === focusedTrackId && t.isVisible !== false)
-      : timelines.filter((t) => t.isVisible !== false);
+    const tracksToAnimate = timelines.filter((t) => t.id === focusedTrackId && t.isVisible !== false);
 
     const pulseSpacing = 380; // Distance between consecutive light pulses along the wire
 
