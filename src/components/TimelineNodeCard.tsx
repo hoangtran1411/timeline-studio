@@ -444,7 +444,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
 
         {/* Description preview */}
         {node.description && (
-          <div className="text-[11px] text-[#71717a] line-clamp-1 mt-0.5 font-normal">
+          <div className="text-[11px] text-[#9e9ea7] line-clamp-1 mt-0.5 font-normal">
             {node.description}
           </div>
         )}
@@ -461,7 +461,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
               </span>
             ))}
             {node.tags.length > 2 && (
-              <span className="text-[9px] font-mono text-[#6b6c75]">
+              <span className="text-[9px] font-mono text-[#9e9ea7]">
                 +{node.tags.length - 2}
               </span>
             )}

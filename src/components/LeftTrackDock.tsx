@@ -58,9 +58,9 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
       {/* Dock Header aligned with the Chrono Ruler (h-16 / 64px) */}
       <div className="h-16 px-4 py-2 border-b border-[#222328] flex items-center justify-between flex-shrink-0 bg-[#121316]">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-xs text-[#ececf0] uppercase tracking-wider font-mono">
+          <h2 className="font-semibold text-xs text-[#ececf0] uppercase tracking-wider font-mono">
             Tracks ({visibleTracks.length}{hiddenTracks.length > 0 ? `/${timelines.length}` : ''})
-          </span>
+          </h2>
           {hiddenTracks.length > 0 && (
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1e2029] text-[#e4e4e7] border border-[#2a2c38]">
               {hiddenTracks.length} hidden
@@ -145,7 +145,7 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
                         <span className="truncate">Branch: {parent.title}</span>
                       </span>
                     ) : (
-                      <span className="text-[10px] font-mono text-[#71717a] flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono text-[#9e9ea7] flex items-center gap-1.5">
                         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isSelected ? 'bg-white' : 'bg-[#ececf0]'}`} />
                         <span>Root Track</span>
                       </span>
@@ -211,7 +211,7 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
                   {track.title}
                 </h3>
                 {track.description && (
-                  <p className="text-[11px] text-[#71717a] truncate mt-0.5" title={track.description}>
+                  <p className="text-[11px] text-[#9e9ea7] truncate mt-0.5" title={track.description}>
                     {track.description}
                   </p>
                 )}
@@ -240,7 +240,7 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
         {/* Hidden Tracks Section */}
         {hiddenTracks.length > 0 && (
           <div className="p-3 bg-[#101114] border-t border-[#222328] space-y-2">
-            <div className="flex items-center justify-between text-[11px] font-mono text-[#71717a]">
+            <div className="flex items-center justify-between text-[11px] font-mono text-[#9e9ea7]">
               <span className="flex items-center gap-1.5">
                 <EyeOff className="w-3 h-3 text-[#9e9ea7]" />
                 <span>Hidden from Canvas ({hiddenTracks.length})</span>

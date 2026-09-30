@@ -154,7 +154,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
             <Table className="w-3.5 h-3.5" />
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            <h3 className="font-semibold text-xs text-[#ececf0] truncate">Timeline Milestones Matrix</h3>
+            <h2 className="font-semibold text-xs text-[#ececf0] truncate">Timeline Milestones Matrix</h2>
             <span className="text-[10px] px-2 py-0.5 rounded border border-[#2a2b32] bg-[#16171b] text-[#9e9ea7] flex-shrink-0 hidden md:inline-block">
               {allNodesWithTrack.length} Real Records (Database)
             </span>
@@ -373,7 +373,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                       title="Click to edit milestone in drawer"
                     >
                       {/* Counter */}
-                      <td className="py-2.5 px-3 text-[#6b6c75] font-mono text-center text-[10px]">
+                      <td className="py-2.5 px-3 text-[#9e9ea7] font-mono text-center text-[10px]">
                         {idx + 1}
                       </td>
 
@@ -383,7 +383,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                           {node.title}
                         </div>
                         {node.description && (
-                          <div className="text-[10px] text-[#71717a] truncate font-normal mt-0.5">
+                          <div className="text-[10px] text-[#9e9ea7] truncate font-normal mt-0.5">
                             {node.description}
                           </div>
                         )}
@@ -404,12 +404,12 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                       <td className="py-2.5 px-3 font-mono text-[#9e9ea7] whitespace-nowrap">
                         <span>{formatDisplayDate(node.startDate)}</span>
                         {node.endDate && (
-                          <span className="text-[#6b6c75]"> – {formatDisplayDate(node.endDate)}</span>
+                          <span className="text-[#9e9ea7]"> – {formatDisplayDate(node.endDate)}</span>
                         )}
                       </td>
 
                       {/* Duration */}
-                      <td className="py-2.5 px-3 font-mono text-[#71717a] whitespace-nowrap">
+                      <td className="py-2.5 px-3 font-mono text-[#9e9ea7] whitespace-nowrap">
                         {getDurationLabel(node.startDate, node.endDate)}
                       </td>
 
