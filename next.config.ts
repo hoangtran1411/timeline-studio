@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     // TypeScript 7 native compiler does not expose the JS Compiler API;
     // this flag tells Next.js to invoke the tsc CLI for type-checking.
     useTypeScriptCli: true,
+    optimizePackageImports: ['lucide-react'],
   },
 };
 

@@ -123,7 +123,9 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
               style={{
                 height: `${height}px`,
                 minHeight: `${height}px`,
-                maxHeight: `${height}px`
+                maxHeight: `${height}px`,
+                contentVisibility: 'auto',
+                containIntrinsicSize: `auto ${height}px`
               }}
               className={`p-3.5 transition-all duration-200 flex flex-col justify-between group relative flex-shrink-0 overflow-hidden box-border cursor-pointer ${
                 isSelected

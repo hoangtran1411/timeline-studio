@@ -5,13 +5,19 @@ import dynamic from 'next/dynamic';
 import { TimelineNode, TimelineTrack, FullTimelineData, Project, NodeStatus } from '@/types/timeline';
 import { Header } from '@/components/Header';
 import { ChronoCanvas, ChronoCanvasRef } from '@/components/ChronoCanvas';
-import { ComparisonMatrix } from '@/components/ComparisonMatrix';
 import { parseDate, getMidpointDate, addDays, formatDateStr } from '@/utils/date-utils';
-
-import { ImageLightboxModal } from '@/components/ImageLightboxModal';
 import { useTimelineShortcuts } from '@/hooks/useTimelineShortcuts';
 
-// Dynamic code-split imports for heavy dialogs/drawers to keep initial LCP bundle minimal
+// Dynamic code-split imports for heavy panels, modals, and drawers to minimize main-thread work and initial bundle
+const ComparisonMatrix = dynamic(() => import('@/components/ComparisonMatrix').then(m => m.ComparisonMatrix), {
+  ssr: false,
+  loading: () => <div className="h-44 bg-[#121316] border-t border-[#222328] animate-pulse" />
+});
+
+const ImageLightboxModal = dynamic(() => import('@/components/ImageLightboxModal').then(m => m.ImageLightboxModal), {
+  ssr: false
+});
+
 const NodeDrawer = dynamic(() => import('@/components/NodeDrawer').then(m => m.NodeDrawer), {
   ssr: false
 });
@@ -831,69 +837,81 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
       </main>
 
       {/* Node Create & Edit Drawer */}
-      <NodeDrawer
-        isOpen={isNodeDrawerOpen}
-        onClose={() => {
-          setIsNodeDrawerOpen(false);
-          setSelectedNode(null);
-        }}
-        node={selectedNode}
-        timelines={data.timelines}
-        defaultTimelineId={defaultNodeTimelineId}
-        defaultStartDate={defaultNodeStartDate}
-        defaultEndDate={defaultNodeEndDate}
-        onSave={handleSaveNode}
-        onDelete={handleDeleteNode}
-        onBranchFromNode={(node) => {
-          setIsNodeDrawerOpen(false);
-          handleOpenBranchModal(node.timelineId, node.id);
-        }}
-        onPreviewImages={handleOpenLightbox}
-      />
+      {isNodeDrawerOpen && (
+        <NodeDrawer
+          isOpen={isNodeDrawerOpen}
+          onClose={() => {
+            setIsNodeDrawerOpen(false);
+            setSelectedNode(null);
+          }}
+          node={selectedNode}
+          timelines={data.timelines}
+          defaultTimelineId={defaultNodeTimelineId}
+          defaultStartDate={defaultNodeStartDate}
+          defaultEndDate={defaultNodeEndDate}
+          onSave={handleSaveNode}
+          onDelete={handleDeleteNode}
+          onBranchFromNode={(node) => {
+            setIsNodeDrawerOpen(false);
+            handleOpenBranchModal(node.timelineId, node.id);
+          }}
+          onPreviewImages={handleOpenLightbox}
+        />
+      )}
 
       {/* Add / Branch Timeline Modal */}
-      <AddTimelineModal
-        isOpen={isTimelineModalOpen}
-        onClose={() => setIsTimelineModalOpen(false)}
-        timelines={data.timelines}
-        preselectedParentId={preselectedParentId}
-        preselectedBranchNodeId={preselectedBranchNodeId}
-        onCreateTimeline={handleCreateTimeline}
-        projects={projects}
-        activeProjectId={activeProjectId}
-      />
+      {isTimelineModalOpen && (
+        <AddTimelineModal
+          isOpen={isTimelineModalOpen}
+          onClose={() => setIsTimelineModalOpen(false)}
+          timelines={data.timelines}
+          preselectedParentId={preselectedParentId}
+          preselectedBranchNodeId={preselectedBranchNodeId}
+          onCreateTimeline={handleCreateTimeline}
+          projects={projects}
+          activeProjectId={activeProjectId}
+        />
+      )}
 
       {/* Archived Timelines Modal */}
-      <ArchivedTracksModal
-        isOpen={isArchiveModalOpen}
-        onClose={() => setIsArchiveModalOpen(false)}
-        archivedTimelines={data.archivedTimelines || []}
-        onRestoreTrack={handleRestoreTrack}
-        onPermanentDeleteTrack={handlePermanentDeleteTrack}
-      />
+      {isArchiveModalOpen && (
+        <ArchivedTracksModal
+          isOpen={isArchiveModalOpen}
+          onClose={() => setIsArchiveModalOpen(false)}
+          archivedTimelines={data.archivedTimelines || []}
+          onRestoreTrack={handleRestoreTrack}
+          onPermanentDeleteTrack={handlePermanentDeleteTrack}
+        />
+      )}
 
       {/* Project Settings & Creation Modal */}
-      <ProjectModal
-        isOpen={isProjectModalOpen}
-        onClose={() => setIsProjectModalOpen(false)}
-        project={editingProject}
-        onSave={handleSaveProject}
-        onDelete={handleDeleteProject}
-      />
+      {isProjectModalOpen && (
+        <ProjectModal
+          isOpen={isProjectModalOpen}
+          onClose={() => setIsProjectModalOpen(false)}
+          project={editingProject}
+          onSave={handleSaveProject}
+          onDelete={handleDeleteProject}
+        />
+      )}
 
       {/* Fullscreen Image Preview Lightbox Modal */}
-      <ImageLightboxModal
-        isOpen={Boolean(lightboxImages && lightboxImages.length > 0)}
-        images={lightboxImages || []}
-        initialIndex={lightboxIndex}
-        onClose={handleCloseLightbox}
-      />
+      {Boolean(lightboxImages && lightboxImages.length > 0) && (
+        <ImageLightboxModal
+          isOpen={Boolean(lightboxImages && lightboxImages.length > 0)}
+          images={lightboxImages || []}
+          initialIndex={lightboxIndex}
+          onClose={handleCloseLightbox}
+        />
+      )}
 
       {/* Keyboard Shortcuts Cheat Sheet Modal */}
-      <ShortcutsModal
-        isOpen={isShortcutsModalOpen}
-        onClose={() => setIsShortcutsModalOpen(false)}
-      />
+      {isShortcutsModalOpen && (
+        <ShortcutsModal
+          isOpen={isShortcutsModalOpen}
+          onClose={() => setIsShortcutsModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

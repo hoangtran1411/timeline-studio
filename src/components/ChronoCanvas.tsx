@@ -1,14 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { TimelineTrack, TimelineNode, NodeDependency, NodeStatus } from '@/types/timeline';
 import { LeftTrackDock } from './LeftTrackDock';
 import { ChronoRuler } from './ChronoRuler';
 import { TimelineNodeCard } from './TimelineNodeCard';
 import { BetweenNodeInserter } from './BetweenNodeInserter';
 import { BranchConnectionLayer } from './BranchConnectionLayer';
-import { ContextMenu, ContextMenuType } from './ContextMenu';
+import type { ContextMenuType } from './ContextMenu';
 import { dateToPixelX, pixelXToDate, compareDateStrings } from '@/utils/date-utils';
+
+const ContextMenu = dynamic(() => import('./ContextMenu').then(m => m.ContextMenu), {
+  ssr: false
+});
 
 export interface ChronoCanvasRef {
   scrollToToday: () => void;
@@ -668,34 +673,36 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
       </div>
 
       {/* Global Right-Click Context Menu */}
-      <ContextMenu
-        isOpen={contextMenu.isOpen}
-        x={contextMenu.x}
-        y={contextMenu.y}
-        type={contextMenu.type}
-        track={contextMenu.track}
-        node={contextMenu.node}
-        clickedDate={contextMenu.clickedDate}
-        leftNeighborNode={contextMenu.leftNeighborNode}
-        rightNeighborNode={contextMenu.rightNeighborNode}
-        selectedTrackId={selectedTrackId}
-        onClose={handleCloseContextMenu}
-        onSelectNode={onSelectNode}
-        onDuplicateNode={onDuplicateNode}
-        onDeleteNode={onDeleteNode}
-        onChangeNodeStatus={onChangeNodeStatus}
-        onBranchFromNode={(n) => onBranchTrack(n.timelineId, n.id)}
-        onAddNodeToTrack={onAddNodeToTrack}
-        onInsertNodeBetween={onInsertNodeBetween}
-        onBranchTrack={onBranchTrack}
-        onToggleTrackVisibility={onToggleVisibility}
-        onDeleteTrack={onDeleteTrack}
-        onSelectTrack={onSelectTrack}
-        onOpenAddTimeline={onOpenAddTimeline}
-        onScrollToToday={handleScrollToToday}
-        onScrollToStart={handleScrollToStart}
-        onResetZoom={onResetZoom}
-      />
+      {contextMenu.isOpen && (
+        <ContextMenu
+          isOpen={contextMenu.isOpen}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          type={contextMenu.type}
+          track={contextMenu.track}
+          node={contextMenu.node}
+          clickedDate={contextMenu.clickedDate}
+          leftNeighborNode={contextMenu.leftNeighborNode}
+          rightNeighborNode={contextMenu.rightNeighborNode}
+          selectedTrackId={selectedTrackId}
+          onClose={handleCloseContextMenu}
+          onSelectNode={onSelectNode}
+          onDuplicateNode={onDuplicateNode}
+          onDeleteNode={onDeleteNode}
+          onChangeNodeStatus={onChangeNodeStatus}
+          onBranchFromNode={(n) => onBranchTrack(n.timelineId, n.id)}
+          onAddNodeToTrack={onAddNodeToTrack}
+          onInsertNodeBetween={onInsertNodeBetween}
+          onBranchTrack={onBranchTrack}
+          onToggleTrackVisibility={onToggleVisibility}
+          onDeleteTrack={onDeleteTrack}
+          onSelectTrack={onSelectTrack}
+          onOpenAddTimeline={onOpenAddTimeline}
+          onScrollToToday={handleScrollToToday}
+          onScrollToStart={handleScrollToStart}
+          onResetZoom={onResetZoom}
+        />
+      )}
     </div>
   );
 });

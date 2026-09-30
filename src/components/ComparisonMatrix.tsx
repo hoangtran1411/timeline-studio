@@ -368,6 +368,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                   filteredRecords.map(({ node, track }, idx) => (
                     <tr
                       key={node.id}
+                      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 40px' }}
                       onClick={() => onSelectNode?.(node)}
                       className="hover:bg-[#1b1c24] cursor-pointer transition-colors group"
                       title="Click to edit milestone in drawer"
