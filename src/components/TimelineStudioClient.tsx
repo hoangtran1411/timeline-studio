@@ -134,7 +134,10 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   };
 
   useEffect(() => {
-    queueMicrotask(() => {
+    let idleId: number | null = null;
+    let timerId: NodeJS.Timeout | null = null;
+
+    const deferInit = () => {
       // If the server didn't pre-populate projects, fetch them
       if (initialProjects.length === 0) {
         void fetchProjects();
@@ -149,7 +152,24 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
           void fetchData(savedPid);
         }
       } catch (_) {}
-    });
+    };
+
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        idleId = (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(deferInit);
+      } else {
+        timerId = setTimeout(deferInit, 50);
+      }
+    }
+
+    return () => {
+      if (idleId !== null && 'cancelIdleCallback' in window) {
+        (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+      }
+      if (timerId !== null) {
+        clearTimeout(timerId);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -589,7 +609,10 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   const [gridStyle, setGridStyle] = useState<'notebook' | 'dots' | 'plain'>('notebook');
 
   useEffect(() => {
-    queueMicrotask(() => {
+    let idleId: number | null = null;
+    let timerId: NodeJS.Timeout | null = null;
+
+    const deferLoadPanelPrefs = () => {
       try {
         const savedHeight = localStorage.getItem('timeline_studio_bottom_height');
         if (savedHeight) {
@@ -609,7 +632,24 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
           setGridStyle(savedGrid as 'notebook' | 'dots' | 'plain');
         }
       } catch (_) {}
-    });
+    };
+
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        idleId = (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(deferLoadPanelPrefs);
+      } else {
+        timerId = setTimeout(deferLoadPanelPrefs, 50);
+      }
+    }
+
+    return () => {
+      if (idleId !== null && 'cancelIdleCallback' in window) {
+        (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+      }
+      if (timerId !== null) {
+        clearTimeout(timerId);
+      }
+    };
   }, []);
 
   const [isResizingBottom, setIsResizingBottom] = useState(false);

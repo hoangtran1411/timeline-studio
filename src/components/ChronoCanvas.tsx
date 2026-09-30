@@ -87,20 +87,57 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   const resizeStartWidth = useRef<number>(320);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('timeline_studio_dock_width');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 220 && parsed <= 560) {
-          setSidebarWidth(parsed);
-        }
-      }
+    let idleId: number | null = null;
+    let timerId: NodeJS.Timeout | null = null;
 
-      const rawCardWidths = localStorage.getItem('timeline_studio_card_widths');
-      if (rawCardWidths) {
-        setCustomCardWidths(JSON.parse(rawCardWidths));
+    const deferLoad = () => {
+      try {
+        const saved = localStorage.getItem('timeline_studio_dock_width');
+        if (saved) {
+          const parsed = parseInt(saved, 10);
+          if (!isNaN(parsed) && parsed >= 220 && parsed <= 560) {
+            setSidebarWidth(parsed);
+          }
+        }
+
+        const rawCardWidths = localStorage.getItem('timeline_studio_card_widths');
+        if (rawCardWidths) {
+          setCustomCardWidths(JSON.parse(rawCardWidths));
+        }
+      } catch (_) {}
+    };
+
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        idleId = (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(deferLoad);
+      } else {
+        timerId = setTimeout(deferLoad, 50);
       }
-    } catch (_) {}
+    }
+
+    return () => {
+      if (idleId !== null && 'cancelIdleCallback' in window) {
+        (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+      }
+      if (timerId !== null) {
+        clearTimeout(timerId);
+      }
+    };
+  }, []);
+
+  const handleUpdateCardWidth = useCallback((nodeId: string, width: number | null) => {
+    setCustomCardWidths((prev) => {
+      const next = { ...prev };
+      if (width === null) {
+        delete next[nodeId];
+      } else {
+        next[nodeId] = width;
+      }
+      try {
+        localStorage.setItem('timeline_studio_card_widths', JSON.stringify(next));
+      } catch (_) {}
+      return next;
+    });
   }, []);
 
   // Reset horizontal scroll position only when needed to prevent layout dirtying on initial mount
@@ -654,6 +691,8 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
                         node={node}
                         pixelLeft={startX}
                         pixelWidth={nodeWidth}
+                        customWidth={customCardWidths[node.id]}
+                        onUpdateCustomWidth={handleUpdateCardWidth}
                         lane={node.lane || 0}
                         pxPerDay={pxPerDay}
                         zIndex={cardZIndex}

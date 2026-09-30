@@ -17,6 +17,8 @@ interface TimelineNodeCardProps {
   onAddAfter: (node: TimelineNode) => void;
   onBranchFromNode: (node: TimelineNode) => void;
   onDelete: (nodeId: string) => void;
+  customWidth?: number | null;
+  onUpdateCustomWidth?: (nodeId: string, width: number | null) => void;
   onMoveNode: (nodeId: string, newStartDate: string, newEndDate: string | null) => Promise<void>;
   onContextMenu?: (e: React.MouseEvent, node: TimelineNode) => void;
   onPreviewImages?: (images: string[], index?: number) => void;
@@ -26,6 +28,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   node,
   pixelLeft,
   pixelWidth,
+  customWidth,
   lane,
   pxPerDay,
   zIndex = 10,
@@ -36,7 +39,8 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   onDelete,
   onMoveNode,
   onContextMenu,
-  onPreviewImages: _onPreviewImages
+  onPreviewImages: _onPreviewImages,
+  onUpdateCustomWidth
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -50,24 +54,6 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   const lockNoticeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isLocked = node.status === 'completed' && !isUnlocked;
-
-  // Custom card width persisted in localStorage (avoids database bloat and SSR hydration mismatches)
-  const [customWidth, setCustomWidth] = useState<number | null>(null);
-
-  useEffect(() => {
-    queueMicrotask(() => {
-      try {
-        const raw = localStorage.getItem('timeline_studio_card_widths');
-        if (raw) {
-          const map = JSON.parse(raw);
-          const saved = map[node.id];
-          if (typeof saved === 'number' && saved >= 160 && saved <= 900) {
-            setCustomWidth(saved);
-          }
-        }
-      } catch (_) {}
-    });
-  }, [node.id]);
 
   const triggerLockNotice = () => {
     setShowLockNotice(true);
@@ -199,13 +185,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
       }
     } else if (state.mode === 'resize') {
       const finalWidth = Math.max(160, Math.min(900, baseWidth + resizeDeltaW));
-      setCustomWidth(finalWidth);
-      try {
-        const raw = localStorage.getItem('timeline_studio_card_widths');
-        const map = raw ? JSON.parse(raw) : {};
-        map[node.id] = finalWidth;
-        localStorage.setItem('timeline_studio_card_widths', JSON.stringify(map));
-      } catch (_) {}
+      onUpdateCustomWidth?.(node.id, finalWidth);
     }
 
     setIsDragging(false);
@@ -216,15 +196,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
 
   const handleResetCardWidth = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCustomWidth(null);
-    try {
-      const raw = localStorage.getItem('timeline_studio_card_widths');
-      if (raw) {
-        const map = JSON.parse(raw);
-        delete map[node.id];
-        localStorage.setItem('timeline_studio_card_widths', JSON.stringify(map));
-      }
-    } catch (_) {}
+    onUpdateCustomWidth?.(node.id, null);
   };
 
   // Dynamic preview date calculation during drag
