@@ -31,6 +31,13 @@
     "tailwindcss": "^4",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
   },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Edge versions",
+    "last 2 Safari versions",
+    "not dead"
+  ],
   "allowScripts": {
     "unrs-resolver@1.12.2": true
   }
