@@ -8,7 +8,8 @@ export async function GET(request: Request) {
     const data = await getFullTimelineData(projectId);
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=59'
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache'
       }
     });
   } catch (error) {

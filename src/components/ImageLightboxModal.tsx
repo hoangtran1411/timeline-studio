@@ -10,32 +10,24 @@ interface ImageLightboxModalProps {
   onClose: () => void;
 }
 
-export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
-  isOpen,
+const ImageLightboxModalDialog: React.FC<ImageLightboxModalProps> = ({
   images,
   initialIndex = 0,
   onClose
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [currentIndex, setCurrentIndex] = useState(() =>
+    Math.max(0, Math.min(initialIndex, images.length - 1))
+  );
   const [isZoomed, setIsZoomed] = useState(false);
-
-  // Sync initial index when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentIndex(Math.max(0, Math.min(initialIndex, images.length - 1)));
-      setIsZoomed(false);
-    }
-  }, [isOpen, initialIndex, images.length]);
 
   // Lock body scroll while modal is active
   useEffect(() => {
-    if (!isOpen) return;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = originalOverflow;
     };
-  }, [isOpen]);
+  }, []);
 
   const handlePrev = useCallback(() => {
     setIsZoomed(false);
@@ -49,7 +41,6 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
 
   // Keyboard navigation
   useEffect(() => {
-    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
@@ -61,9 +52,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, handlePrev, handleNext]);
-
-  if (!isOpen || images.length === 0) return null;
+  }, [onClose, handlePrev, handleNext]);
 
   const currentImage = images[currentIndex] || images[0];
 
@@ -250,5 +239,15 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
         <div className="py-2" />
       )}
     </div>
+  );
+};
+
+export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = (props) => {
+  if (!props.isOpen || !props.images || props.images.length === 0) return null;
+  return (
+    <ImageLightboxModalDialog
+      key={`${props.initialIndex ?? 0}-${props.images.length}`}
+      {...props}
+    />
   );
 };

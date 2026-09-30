@@ -36,7 +36,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   onDelete,
   onMoveNode,
   onContextMenu,
-  onPreviewImages
+  onPreviewImages: _onPreviewImages
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);

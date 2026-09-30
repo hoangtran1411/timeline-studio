@@ -298,6 +298,8 @@ export async function createTimeline(params: {
     parentTimelineId: params.parentTimelineId || null,
     branchPointNodeId: params.branchPointNodeId || null,
     orderIndex: maxOrder + 1,
+    isArchived: false,
+    isVisible: true,
     nodes: []
   };
 }

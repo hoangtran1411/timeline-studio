@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { TimelineNode, FullTimelineData, Project, NodeStatus } from '@/types/timeline';
+import { TimelineNode, TimelineTrack, FullTimelineData, Project, NodeStatus } from '@/types/timeline';
 import { Header } from '@/components/Header';
 import { ChronoCanvas, ChronoCanvasRef } from '@/components/ChronoCanvas';
 import { ComparisonMatrix } from '@/components/ComparisonMatrix';
@@ -94,7 +94,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   // Fetch project list
   const fetchProjects = async (): Promise<Project[]> => {
     try {
-      const res = await fetch('/api/projects');
+      const res = await fetch('/api/projects', { cache: 'no-store' });
       if (res.ok) {
         const list: Project[] = await res.json();
         setProjects(list);
@@ -111,7 +111,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
     const targetPid = projectIdToFetch || activeProjectIdRef.current;
     try {
       setLoading(true);
-      const res = await fetch(`/api/timeline?projectId=${encodeURIComponent(targetPid)}`);
+      const res = await fetch(`/api/timeline?projectId=${encodeURIComponent(targetPid)}`, { cache: 'no-store' });
       if (res.ok) {
         const json: FullTimelineData = await res.json();
         setData(json);
@@ -157,7 +157,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
     setSelectedTrackId(null);
     setSelectedNode(null);
     await fetchData(projectId);
-    await fetchProjects();
+    void fetchProjects();
   };
 
   const handleOpenCreateProject = () => {
@@ -177,13 +177,23 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
     icon?: string;
   }) => {
     if (editingProject) {
+      // Optimistically update projects list and active project header immediately
+      setProjects(prev =>
+        prev.map(p => (p.id === editingProject.id ? { ...p, ...projectData } : p))
+      );
+      if (data.project?.id === editingProject.id) {
+        setData(prev => ({
+          ...prev,
+          project: prev.project ? { ...prev.project, ...projectData } : null
+        }));
+      }
+
       await fetch(`/api/projects/${editingProject.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(projectData)
       });
-      await fetchProjects();
-      await fetchData(activeProjectIdRef.current);
+      void fetchProjects();
     } else {
       const res = await fetch('/api/projects', {
         method: 'POST',
@@ -192,8 +202,22 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
       });
       if (res.ok) {
         const newProject: Project = await res.json();
-        await fetchProjects();
-        await handleSelectProject(newProject.id);
+        // Immediately add new project to state & switch to it without waiting for waterfalls
+        setProjects(prev => [...prev, newProject]);
+        setActiveProjectId(newProject.id);
+        activeProjectIdRef.current = newProject.id;
+        try {
+          localStorage.setItem('timeline_studio_active_project_id', newProject.id);
+        } catch (_) {}
+        setSelectedTrackId(null);
+        setSelectedNode(null);
+        setData({
+          project: newProject,
+          timelines: [],
+          archivedTimelines: [],
+          dependencies: []
+        });
+        void fetchProjects();
       }
     }
   };
@@ -367,7 +391,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
     branchPointNodeId?: string | null;
   }) => {
     const targetProject = timelineData.projectId || activeProjectIdRef.current;
-    await fetch('/api/timeline', {
+    const res = await fetch('/api/timeline', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -375,11 +399,31 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
         projectId: targetProject
       })
     });
-    if (targetProject !== activeProjectIdRef.current) {
-      await handleSelectProject(targetProject);
-    } else {
-      await fetchData();
-      await fetchProjects();
+    if (res.ok) {
+      const newTrack: TimelineTrack = await res.json();
+      if (targetProject === activeProjectIdRef.current) {
+        setData(prev => ({
+          ...prev,
+          timelines: [
+            ...prev.timelines,
+            {
+              ...newTrack,
+              isArchived: false,
+              isVisible: true,
+              nodes: []
+            }
+          ]
+        }));
+        setProjects(prev =>
+          prev.map(p =>
+            p.id === targetProject ? { ...p, timelineCount: (p.timelineCount ?? 0) + 1 } : p
+          )
+        );
+        void fetchData(targetProject);
+        void fetchProjects();
+      } else {
+        await handleSelectProject(targetProject);
+      }
     }
   };
 

@@ -3,11 +3,13 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { seedHistoricalData } from './historical-seed';
 
-let _client: Client | null = null;
-let _schemaInitialized = false;
+const globalForDb = globalThis as unknown as {
+  _libsqlClient?: Client;
+  _schemaInitPromise?: Promise<void>;
+};
 
 export function getDb(): Client {
-  if (!_client) {
+  if (!globalForDb._libsqlClient) {
     let rawUrl = process.env.TURSO_DATABASE_URL?.trim().replace(/^["']|["']$/g, '');
     const token = process.env.TURSO_AUTH_TOKEN?.trim().replace(/^["']|["']$/g, '');
 
@@ -47,16 +49,20 @@ export function getDb(): Client {
       url = `file:${path.join(dataDir, 'timeline.db').replace(/\\/g, '/')}`;
     }
 
-    _client = createClient({
+    globalForDb._libsqlClient = createClient({
       url: url!,
       authToken: token
     });
   }
-  return _client;
+  return globalForDb._libsqlClient;
 }
 
 export async function ensureSchema(db: Client = getDb()): Promise<void> {
-  if (_schemaInitialized) return;
+  if (globalForDb._schemaInitPromise) {
+    return globalForDb._schemaInitPromise;
+  }
+
+  globalForDb._schemaInitPromise = (async () => {
 
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS projects (
@@ -191,7 +197,21 @@ export async function ensureSchema(db: Client = getDb()): Promise<void> {
     await seedHistoricalData(db);
   }
 
-  _schemaInitialized = true;
+  // Create indexes for fast joins and lookups
+  await db.executeMultiple(`
+    CREATE INDEX IF NOT EXISTS idx_timelines_project_id ON timelines(project_id);
+    CREATE INDEX IF NOT EXISTS idx_timelines_is_archived ON timelines(is_archived);
+    CREATE INDEX IF NOT EXISTS idx_nodes_timeline_id ON nodes(timeline_id);
+    CREATE INDEX IF NOT EXISTS idx_nodes_start_date ON nodes(start_date);
+    CREATE INDEX IF NOT EXISTS idx_dependencies_from ON dependencies(from_node_id);
+    CREATE INDEX IF NOT EXISTS idx_dependencies_to ON dependencies(to_node_id);
+  `);
+  })().catch(err => {
+    globalForDb._schemaInitPromise = undefined;
+    throw err;
+  });
+
+  return globalForDb._schemaInitPromise;
 }
 
 async function seedProjects(db: Client) {

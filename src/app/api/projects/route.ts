@@ -6,7 +6,8 @@ export async function GET() {
     const projects = await getProjects();
     return NextResponse.json(projects, {
       headers: {
-        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=59'
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache'
       }
     });
   } catch (error) {
