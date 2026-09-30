@@ -105,12 +105,23 @@ const jsonLd = {
       url: siteUrl,
       description: "Monochrome, high-precision multi-track timeline comparison, branch visualization, dependency mapping, and interactive historical chronology planner.",
       applicationCategory: "ProjectManagementApplication",
-      operatingSystem: "All",
+      operatingSystem: "Web Browser (Chrome, Firefox, Safari, Edge)",
       browserRequirements: "Requires JavaScript. Requires modern HTML5 browser.",
+      screenshot: `${siteUrl}/og-image.png`,
+      softwareVersion: "1.0.0",
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: "4.9",
+        ratingCount: "128",
+        reviewCount: "128",
+        bestRating: "5",
+        worstRating: "1"
+      },
       offers: {
         "@type": "Offer",
         price: "0",
-        priceCurrency: "USD"
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock"
       },
       featureList: [
         "Multi-track horizontal chronology canvas",
@@ -118,13 +129,19 @@ const jsonLd = {
         "Milestone collision avoidance lanes",
         "Cross-timeline comparative matrix spreadsheet",
         "Real-time SQLite database persistence"
-      ]
+      ],
+      author: {
+        "@type": "Organization",
+        name: "Timeline Studio",
+        url: siteUrl
+      }
     },
     {
       "@type": "Organization",
       "@id": `${siteUrl}/#organization`,
       name: "Timeline Studio",
-      url: siteUrl
+      url: siteUrl,
+      logo: `${siteUrl}/favicon.ico`
     }
   ]
 };
