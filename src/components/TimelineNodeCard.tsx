@@ -120,33 +120,58 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
     setIsResizing(true);
   };
 
+  const nodeMoveRafId = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (nodeMoveRafId.current !== null) {
+        cancelAnimationFrame(nodeMoveRafId.current);
+      }
+    };
+  }, []);
+
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!pointerState.current) return;
-    const delta = e.clientX - pointerState.current.startX;
+    const clientX = e.clientX;
 
-    if (pointerState.current.mode === 'move') {
-      if (isLocked) {
-        if (Math.abs(delta) > 4) {
-          triggerLockNotice();
-        }
+    if (nodeMoveRafId.current !== null) return;
+    nodeMoveRafId.current = requestAnimationFrame(() => {
+      if (!pointerState.current) {
+        nodeMoveRafId.current = null;
         return;
       }
+      const delta = clientX - pointerState.current.startX;
 
-      if (!pointerState.current.isActualAction && Math.abs(delta) > 3) {
-        pointerState.current.isActualAction = true;
-        setIsDragging(true);
+      if (pointerState.current.mode === 'move') {
+        if (isLocked) {
+          if (Math.abs(delta) > 4) {
+            triggerLockNotice();
+          }
+          nodeMoveRafId.current = null;
+          return;
+        }
+
+        if (!pointerState.current.isActualAction && Math.abs(delta) > 3) {
+          pointerState.current.isActualAction = true;
+          setIsDragging(true);
+        }
+        if (pointerState.current.isActualAction) {
+          setDragDeltaX(delta);
+        }
+      } else if (pointerState.current.mode === 'resize') {
+        setResizeDeltaW(delta);
       }
-      if (pointerState.current.isActualAction) {
-        setDragDeltaX(delta);
-      }
-    } else if (pointerState.current.mode === 'resize') {
-      setResizeDeltaW(delta);
-    }
+      nodeMoveRafId.current = null;
+    });
   };
 
   const baseWidth = customWidth ?? pixelWidth;
 
   const handlePointerUp = async (e: React.PointerEvent<HTMLDivElement>) => {
+    if (nodeMoveRafId.current !== null) {
+      cancelAnimationFrame(nodeMoveRafId.current);
+      nodeMoveRafId.current = null;
+    }
     if (!pointerState.current) return;
     if (e.button !== 0) return; // Ignore right-click release!
     const state = pointerState.current;

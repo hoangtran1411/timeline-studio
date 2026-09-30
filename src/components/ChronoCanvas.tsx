@@ -103,12 +103,14 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     } catch (_) {}
   }, []);
 
-  // Reset horizontal scroll position when project/origin date changes
+  // Reset horizontal scroll position only when needed to prevent layout dirtying on initial mount
   useEffect(() => {
-    if (scrollContainerRef.current) {
+    if (scrollContainerRef.current && scrollContainerRef.current.scrollLeft !== 0) {
       scrollContainerRef.current.scrollLeft = 0;
     }
   }, [originDate]);
+
+  const resizeRafId = useRef<number | null>(null);
 
   const handleResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -119,13 +121,22 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
 
   const handleResizePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isResizingSidebar) return;
-    const delta = e.clientX - resizeStartX.current;
-    const nextWidth = Math.max(220, Math.min(560, resizeStartWidth.current + delta));
-    setSidebarWidth(nextWidth);
+    const clientX = e.clientX;
+    if (resizeRafId.current !== null) return;
+    resizeRafId.current = requestAnimationFrame(() => {
+      const delta = clientX - resizeStartX.current;
+      const nextWidth = Math.max(220, Math.min(560, resizeStartWidth.current + delta));
+      setSidebarWidth(nextWidth);
+      resizeRafId.current = null;
+    });
   };
 
   const handleResizePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isResizingSidebar) return;
+    if (resizeRafId.current !== null) {
+      cancelAnimationFrame(resizeRafId.current);
+      resizeRafId.current = null;
+    }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (_) {}
@@ -145,11 +156,18 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
   // Synchronized bidirectional vertical scroll state between Canvas and Left Track Dock
   const activeScrollSource = useRef<'canvas' | 'dock' | null>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollRafId = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
+      }
+      if (scrollRafId.current !== null) {
+        cancelAnimationFrame(scrollRafId.current);
+      }
+      if (resizeRafId.current !== null) {
+        cancelAnimationFrame(resizeRafId.current);
       }
     };
   }, []);
@@ -168,18 +186,32 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
     if (activeScrollSource.current === 'dock') return;
     setScrollSource('canvas');
 
-    if (leftDockScrollRef.current && leftDockScrollRef.current.scrollTop !== e.currentTarget.scrollTop) {
-      leftDockScrollRef.current.scrollTop = e.currentTarget.scrollTop;
+    const targetTop = e.currentTarget.scrollTop;
+    if (scrollRafId.current !== null) {
+      cancelAnimationFrame(scrollRafId.current);
     }
+    scrollRafId.current = requestAnimationFrame(() => {
+      if (leftDockScrollRef.current && leftDockScrollRef.current.scrollTop !== targetTop) {
+        leftDockScrollRef.current.scrollTop = targetTop;
+      }
+      scrollRafId.current = null;
+    });
   };
 
   const handleDockScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (activeScrollSource.current === 'canvas') return;
     setScrollSource('dock');
 
-    if (scrollContainerRef.current && scrollContainerRef.current.scrollTop !== e.currentTarget.scrollTop) {
-      scrollContainerRef.current.scrollTop = e.currentTarget.scrollTop;
+    const targetTop = e.currentTarget.scrollTop;
+    if (scrollRafId.current !== null) {
+      cancelAnimationFrame(scrollRafId.current);
     }
+    scrollRafId.current = requestAnimationFrame(() => {
+      if (scrollContainerRef.current && scrollContainerRef.current.scrollTop !== targetTop) {
+        scrollContainerRef.current.scrollTop = targetTop;
+      }
+      scrollRafId.current = null;
+    });
   };
 
   const handleScrollToToday = useCallback(() => {

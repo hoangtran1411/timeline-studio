@@ -615,6 +615,7 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
   const [isResizingBottom, setIsResizingBottom] = useState(false);
   const resizeStartY = useRef<number>(0);
   const resizeStartBottomHeight = useRef<number>(250);
+  const bottomResizeRafId = useRef<number | null>(null);
 
   const handleBottomResizePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -628,13 +629,22 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
 
   const handleBottomResizePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isResizingBottom) return;
-    const deltaY = e.clientY - resizeStartY.current;
-    const nextHeight = Math.max(120, Math.min(600, resizeStartBottomHeight.current - deltaY));
-    setBottomPanelHeight(nextHeight);
+    const clientY = e.clientY;
+    if (bottomResizeRafId.current !== null) return;
+    bottomResizeRafId.current = requestAnimationFrame(() => {
+      const deltaY = clientY - resizeStartY.current;
+      const nextHeight = Math.max(120, Math.min(600, resizeStartBottomHeight.current - deltaY));
+      setBottomPanelHeight(nextHeight);
+      bottomResizeRafId.current = null;
+    });
   };
 
   const handleBottomResizePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isResizingBottom) return;
+    if (bottomResizeRafId.current !== null) {
+      cancelAnimationFrame(bottomResizeRafId.current);
+      bottomResizeRafId.current = null;
+    }
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (_) {}
