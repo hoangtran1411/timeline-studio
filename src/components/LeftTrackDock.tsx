@@ -280,7 +280,7 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
                     {onArchiveTrack && (
                       <button
                         onClick={() => onArchiveTrack(track.id)}
-                        className="p-1 rounded text-[#71717a] hover:text-[#ececf0] hover:bg-[#22242f] transition-colors"
+                        className="p-1 rounded text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#22242f] transition-colors"
                         title="Archive track"
                       >
                         <Archive className="w-3.5 h-3.5" />
@@ -288,7 +288,7 @@ const LeftTrackDockComponent: React.FC<LeftTrackDockProps> = ({
                     )}
                     <button
                       onClick={() => onDeleteTrack(track.id)}
-                      className="p-1 rounded text-[#71717a] hover:text-red-400 hover:bg-[#22242f] transition-colors"
+                      className="p-1 rounded text-[#9e9ea7] hover:text-red-400 hover:bg-[#22242f] transition-colors"
                       title="Delete track permanently"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

@@ -119,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
                   Timeline Studio
                 </h1>
                 <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#2a2b32] bg-[#16171b] text-[#9e9ea7] hidden xl:flex items-center gap-1 font-mono">
-                  <Database className="w-2.5 h-2.5 text-[#71717a]" />
+                  <Database className="w-2.5 h-2.5 text-[#9e9ea7]" />
                   SQLite
                 </span>
               </div>
@@ -149,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
                     {currentProject?.name || 'Select Project'}
                   </span>
                   <ChevronDown
-                    className={`w-3.5 h-3.5 text-[#71717a] transition-transform duration-200 ${
+                    className={`w-3.5 h-3.5 text-[#9e9ea7] transition-transform duration-200 ${
                       isProjectDropdownOpen ? 'rotate-180 text-white' : ''
                     }`}
                   />
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
             {isProjectDropdownOpen && (
               <div className="absolute top-full left-0 mt-2 w-80 bg-[#141519] border border-[#2a2b32] rounded-xl shadow-2xl overflow-hidden z-[100] font-mono text-xs select-none">
                 <div className="px-3.5 py-2 border-b border-[#222328] bg-[#121316] flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider text-[#71717a] font-semibold">
+                  <span className="text-[10px] uppercase tracking-wider text-[#9e9ea7] font-semibold">
                     Workspaces & Projects
                   </span>
                   <span className="text-[10px] text-[#9e9ea7] bg-[#1a1b20] px-1.5 py-0.5 rounded border border-[#262832]">
@@ -200,11 +200,11 @@ export const Header: React.FC<HeaderProps> = ({
                               )}
                             </div>
                             {proj.description && (
-                              <span className="text-[10px] text-[#6b6c75] truncate max-w-[190px] font-sans">
+                              <span className="text-[10px] text-[#9e9ea7] truncate max-w-[190px] font-sans">
                                 {proj.description}
                               </span>
                             )}
-                            <span className="text-[9px] text-[#555761] mt-0.5">
+                            <span className="text-[9px] text-[#9e9ea7] mt-0.5">
                               {proj.timelineCount || 0} tracks • {proj.nodeCount || 0} nodes
                             </span>
                           </div>
@@ -218,7 +218,7 @@ export const Header: React.FC<HeaderProps> = ({
                               setIsProjectDropdownOpen(false);
                               onOpenEditProject(proj);
                             }}
-                            className="p-1.5 rounded text-[#71717a] hover:text-[#ececf0] hover:bg-[#252733] transition-colors opacity-0 group-hover:opacity-100"
+                            className="p-1.5 rounded text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#252733] transition-colors opacity-0 group-hover:opacity-100"
                             title="Edit Project Settings"
                           >
                             <Pencil className="w-3.5 h-3.5" />
@@ -257,16 +257,16 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2.5 flex-shrink-0">
           {/* Search box */}
           <div className="relative w-44 lg:w-60">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#71717a]" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9e9ea7]" />
             <input
               ref={searchInputRef}
               type="text"
               placeholder="Filter nodes... (/)"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full bg-[#16171b] border border-[#222328] rounded-md pl-8 pr-7 py-1.5 text-xs text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#3e404b] transition-colors font-mono"
+              className="w-full bg-[#16171b] border border-[#222328] rounded-md pl-8 pr-7 py-1.5 text-xs text-[#ececf0] placeholder-[#9e9ea7] focus:outline-none focus:border-[#3e404b] transition-colors font-mono"
             />
-            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#202128] border border-[#2e303a] text-[10px] text-[#71717a] font-mono pointer-events-none hidden sm:inline-block">
+            <kbd className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded bg-[#202128] border border-[#2e303a] text-[10px] text-[#9e9ea7] font-mono pointer-events-none hidden sm:inline-block">
               /
             </kbd>
           </div>

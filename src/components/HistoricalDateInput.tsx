@@ -111,7 +111,7 @@ export const HistoricalDateInput: React.FC<HistoricalDateInputProps> = ({
             className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${
               isBC
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
-                : 'text-[#6b6c75] hover:text-[#ececf0]'
+                : 'text-[#9e9ea7] hover:text-[#ececf0]'
             }`}
             title="Before Christ (BCE / TCN) - Negative Year"
           >
@@ -123,7 +123,7 @@ export const HistoricalDateInput: React.FC<HistoricalDateInputProps> = ({
             className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${
               !isBC
                 ? 'bg-[#2a2b32] text-[#ececf0] border border-[#3e404b] shadow-xs'
-                : 'text-[#6b6c75] hover:text-[#ececf0]'
+                : 'text-[#9e9ea7] hover:text-[#ececf0]'
             }`}
             title="Anno Domini (CE / SCN) - Positive Year"
           >
@@ -139,7 +139,7 @@ export const HistoricalDateInput: React.FC<HistoricalDateInputProps> = ({
           onBlur={handleBlur}
           placeholder={placeholder}
           required={required}
-          className="flex-1 bg-transparent px-3 py-2 text-[#ececf0] placeholder-[#52525b] text-xs font-mono focus:outline-none"
+          className="flex-1 bg-transparent px-3 py-2 text-[#ececf0] placeholder-[#9e9ea7] text-xs font-mono focus:outline-none"
         />
 
         {/* Optional Native Date Picker Trigger for AD dates */}
@@ -154,7 +154,7 @@ export const HistoricalDateInput: React.FC<HistoricalDateInputProps> = ({
                   nativeInputRef.current?.focus();
                 }
               }}
-              className="p-1 rounded text-[#6b6c75] hover:text-[#ececf0] hover:bg-[#202128] transition-colors"
+              className="p-1 rounded text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#202128] transition-colors"
               title="Open calendar picker (AD dates only)"
             >
               <Calendar className="w-3.5 h-3.5" />
@@ -171,10 +171,10 @@ export const HistoricalDateInput: React.FC<HistoricalDateInputProps> = ({
         )}
       </div>
 
-      <div className="mt-1 flex items-center justify-between text-[10px] text-[#6b6c75]">
-        <span>Format: <code className="text-[#9e9ea7]">YYYY-MM-DD</code> (e.g. 0221-01-01)</span>
+      <div className="mt-1 flex items-center justify-between text-[10px] text-[#9e9ea7]">
+        <span>Format: <code className="text-[#ececf0]">YYYY-MM-DD</code> (e.g. 0221-01-01)</span>
         {isBC && (
-          <span className="text-amber-400/80 font-mono">BCE Era (Saved as -{rawText || 'YYYY-MM-DD'})</span>
+          <span className="text-amber-300 font-mono">BCE Era (Saved as -{rawText || 'YYYY-MM-DD'})</span>
         )}
       </div>
     </div>

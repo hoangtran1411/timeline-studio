@@ -128,7 +128,7 @@ const AddTimelineModalDialog: React.FC<AddTimelineModalProps> = ({
                   <Layers className="w-3.5 h-3.5" />
                   <span>Independent Track</span>
                 </div>
-                <span className="text-[10px] text-[#71717a]">
+                <span className="text-[10px] text-[#9e9ea7]">
                   Parallel roadmap, competitor, or standalone milestone track.
                 </span>
               </button>
@@ -146,7 +146,7 @@ const AddTimelineModalDialog: React.FC<AddTimelineModalProps> = ({
                   <GitFork className="w-3.5 h-3.5" />
                   <span>Branch from Track</span>
                 </div>
-                <span className="text-[10px] text-[#71717a]">
+                <span className="text-[10px] text-[#9e9ea7]">
                   Diverges from an existing roadmap or specific milestone node.
                 </span>
               </button>

@@ -377,7 +377,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
                 )}
               </button>
             ) : (
-              <GripVertical className="w-3 h-3 text-[#6b6c75] opacity-50 group-hover:opacity-100 flex-shrink-0" />
+              <GripVertical className="w-3 h-3 text-[#9e9ea7] opacity-60 group-hover:opacity-100 flex-shrink-0" />
             )}
             <span className="font-mono text-[11px] text-[#9e9ea7] tracking-tight truncate font-medium">
               {formatDisplayDate(previewStartDate)}
@@ -488,7 +488,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
               <span className="w-1.5 h-1.5 rounded-full bg-[#ececf0]" title="High Priority" />
             )}
             {node.priority === 'medium' && (
-              <span className="w-1.5 h-1.5 rounded-full bg-[#71717a]" title="Medium Priority" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#9e9ea7]" title="Medium Priority" />
             )}
             {isLocked && (
               <span title="Locked milestone">
@@ -515,7 +515,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
           className={`w-0.5 rounded-full transition-all ${
             isResizing
               ? 'h-8 bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]'
-              : 'h-4 bg-[#6b6c75] group-hover/resize:bg-[#ececf0] group-hover/resize:h-6'
+              : 'h-4 bg-[#9e9ea7] group-hover/resize:bg-[#ececf0] group-hover/resize:h-6'
           }`}
         />
       </div>

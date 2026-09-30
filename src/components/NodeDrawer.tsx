@@ -354,7 +354,7 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Core API architecture..."
-              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
+              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#9e9ea7] focus:outline-none focus:border-[#454754]"
               required
             />
           </div>
@@ -401,7 +401,7 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
                   />
                   <span className="text-[#9e9ea7]">days</span>
                 </div>
-                <p className="text-[10px] text-[#71717a]">
+                <p className="text-[10px] text-[#9e9ea7]">
                   Later nodes on this track starting on or after this date will automatically move forward.
                 </p>
               </div>
@@ -445,7 +445,7 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="e.g. backend, security, milestone"
-              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
+              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#9e9ea7] focus:outline-none focus:border-[#454754]"
             />
           </div>
 
@@ -457,7 +457,7 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Add key deliverables, goals, or notes..."
-              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754] resize-none"
+              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#9e9ea7] focus:outline-none focus:border-[#454754] resize-none"
             />
           </div>
 
@@ -472,7 +472,7 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowUrlInput(!showUrlInput)}
-                  className="text-[10px] text-[#71717a] hover:text-[#ececf0] transition-colors flex items-center gap-1"
+                  className="text-[10px] text-[#9e9ea7] hover:text-[#ececf0] transition-colors flex items-center gap-1"
                 >
                   <LinkIcon className="w-2.5 h-2.5" />
                   <span>{showUrlInput ? 'Upload files' : 'Link via URL'}</span>
@@ -557,7 +557,7 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
                       handleAddUrlImage();
                     }
                   }}
-                  className="flex-1 bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
+                  className="flex-1 bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#9e9ea7] focus:outline-none focus:border-[#454754]"
                 />
                 <button
                   type="button"
@@ -597,20 +597,20 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
                   </>
                 ) : (
                   <>
-                    <Upload className="w-4 h-4 text-[#71717a]" />
+                    <Upload className="w-4 h-4 text-[#9e9ea7]" />
                     <span className="text-[11px] text-[#ececf0] font-medium">
                       {imageUrls.length === 0
                         ? 'Click to upload up to 4 images (or drag & drop)'
                         : `Upload more (${4 - imageUrls.length} slot${4 - imageUrls.length > 1 ? 's' : ''} remaining)`}
                     </span>
-                    <span className="text-[10px] text-[#6b6c75]">
+                    <span className="text-[10px] text-[#9e9ea7]">
                       PNG, JPG, WebP, GIF, SVG up to 5MB each
                     </span>
                   </>
                 )}
               </div>
             ) : (
-              <div className="text-center py-2 px-3 rounded border border-[#2a2b32] bg-[#18191e]/40 text-[#71717a] font-mono text-[11px]">
+              <div className="text-center py-2 px-3 rounded border border-[#2a2b32] bg-[#18191e]/40 text-[#9e9ea7] font-mono text-[11px]">
                 Maximum 4 images attached
               </div>
             )}

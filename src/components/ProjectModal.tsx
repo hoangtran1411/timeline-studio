@@ -127,7 +127,7 @@ const ProjectModalDialog: React.FC<ProjectModalProps> = ({
                 placeholder="e.g. Historical Chronology, Idea Roadmap..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#4e505e] transition-colors"
+                className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#9e9ea7] focus:outline-none focus:border-[#4e505e] transition-colors"
               />
             </div>
           </div>
@@ -142,7 +142,7 @@ const ProjectModalDialog: React.FC<ProjectModalProps> = ({
               placeholder="Brief context or goals for this timeline project..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#4e505e] transition-colors resize-none"
+              className="w-full bg-[#18191e] border border-[#2a2b32] rounded-md px-3 py-2 text-[#ececf0] placeholder-[#9e9ea7] focus:outline-none focus:border-[#4e505e] transition-colors resize-none"
             />
           </div>
 

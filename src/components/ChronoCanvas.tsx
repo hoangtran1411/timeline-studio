@@ -665,7 +665,7 @@ export const ChronoCanvas = forwardRef<ChronoCanvasRef, ChronoCanvasProps>(({
             onContextMenu={handleCanvasContextMenu}
             title={selectedTrackId ? "Click empty canvas to track all timelines (Double-click to add a milestone)" : "Double-click empty grid to add a milestone"}
           >
-            <div className="opacity-0 group-hover/empty:opacity-100 transition-opacity px-4 py-2 rounded border border-dashed border-[#2a2b32] bg-[#141519]/80 text-[#71717a] text-xs font-mono flex items-center gap-2 pointer-events-none">
+            <div className="opacity-0 group-hover/empty:opacity-100 transition-opacity px-4 py-2 rounded border border-dashed border-[#2a2b32] bg-[#141519]/80 text-[#9e9ea7] text-xs font-mono flex items-center gap-2 pointer-events-none">
               <span>{selectedTrackId ? 'Click empty canvas to track all timelines • Double-click to add milestone' : '+ Double-click to add milestone to canvas'}</span>
             </div>
           </div>

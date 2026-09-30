@@ -146,7 +146,7 @@ export const ChronoRuler: React.FC<ChronoRulerProps> = ({
               left: `${m.pixelStart}px`,
               width: `${m.pixelWidth}px`
             }}
-            className="h-full border-r border-[#222328] px-3 flex items-center justify-between text-xs font-mono text-[#ececf0]/90 font-medium whitespace-nowrap overflow-hidden"
+            className="h-full border-r border-[#222328] px-3 flex items-center justify-between text-xs font-mono text-[#ececf0] font-medium whitespace-nowrap overflow-hidden"
           >
             <span className="truncate">{m.name}</span>
           </div>
@@ -154,7 +154,7 @@ export const ChronoRuler: React.FC<ChronoRulerProps> = ({
       </div>
 
       {/* Minor Ticks row (Decades / Quarters / Weeks) */}
-      <div className="h-8 relative flex items-center font-mono text-[10px] text-[#6b6c75] overflow-hidden">
+      <div className="h-8 relative flex items-center font-mono text-[10px] text-[#a1a1aa] overflow-hidden">
         {minorTicks.map((w, idx) => (
           <div
             key={idx}
@@ -162,7 +162,7 @@ export const ChronoRuler: React.FC<ChronoRulerProps> = ({
             className="flex flex-col items-center -translate-x-1/2 whitespace-nowrap"
           >
             <span>{w.label}</span>
-            <div className="h-2 w-px bg-[#2a2b32] mt-0.5" />
+            <div className="h-2 w-px bg-[#3f404d] mt-0.5" />
           </div>
         ))}
       </div>

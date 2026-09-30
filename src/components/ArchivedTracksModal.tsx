@@ -40,14 +40,14 @@ export const ArchivedTracksModal: React.FC<ArchivedTracksModalProps> = ({
                   {archivedTimelines.length} {archivedTimelines.length === 1 ? 'track' : 'tracks'}
                 </span>
               </div>
-              <p className="text-xs text-[#71717a] mt-0.5">
+              <p className="text-xs text-[#9e9ea7] mt-0.5">
                 Preserved in SQLite database without cluttering the main canvas
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#71717a] hover:text-[#ececf0] hover:bg-[#1f2027] transition-colors"
+            className="p-1.5 rounded-lg text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#1f2027] transition-colors"
             title="Close"
           >
             <X className="w-4 h-4" />
@@ -58,13 +58,13 @@ export const ArchivedTracksModal: React.FC<ArchivedTracksModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-3.5">
           {archivedTimelines.length === 0 ? (
             <div className="py-14 text-center flex flex-col items-center justify-center">
-              <div className="w-12 h-12 rounded-full bg-[#181920] border border-[#262832] flex items-center justify-center text-[#71717a] mb-3">
+              <div className="w-12 h-12 rounded-full bg-[#181920] border border-[#262832] flex items-center justify-center text-[#9e9ea7] mb-3">
                 <Archive className="w-6 h-6 stroke-[1.5]" />
               </div>
               <h3 className="text-xs font-semibold text-[#ececf0] uppercase tracking-wider font-mono">
                 No Archived Timelines
               </h3>
-              <p className="text-xs text-[#71717a] max-w-sm mt-1">
+              <p className="text-xs text-[#9e9ea7] max-w-sm mt-1">
                 You can archive any timeline track from the left dock action bar to offload it from the canvas while retaining all nodes and dates in your database.
               </p>
             </div>
@@ -93,7 +93,7 @@ export const ArchivedTracksModal: React.FC<ArchivedTracksModalProps> = ({
                         )}
                       </div>
                       {track.description && (
-                        <p className="text-xs text-[#71717a] line-clamp-2">
+                        <p className="text-xs text-[#9e9ea7] line-clamp-2">
                           {track.description}
                         </p>
                       )}
@@ -112,7 +112,7 @@ export const ArchivedTracksModal: React.FC<ArchivedTracksModalProps> = ({
 
                       <button
                         onClick={() => onPermanentDeleteTrack(track.id)}
-                        className="p-1.5 rounded-md text-[#71717a] hover:text-red-400 hover:bg-[#252026] border border-transparent hover:border-red-900/30 transition-colors"
+                        className="p-1.5 rounded-md text-[#9e9ea7] hover:text-red-400 hover:bg-[#252026] border border-transparent hover:border-red-900/30 transition-colors"
                         title="Permanently delete from database"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -121,10 +121,10 @@ export const ArchivedTracksModal: React.FC<ArchivedTracksModalProps> = ({
                   </div>
 
                   {/* Summary Footer */}
-                  <div className="flex items-center justify-between pt-2 border-t border-[#222328] text-[11px] font-mono text-[#71717a]">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#222328] text-[11px] font-mono text-[#9e9ea7]">
                     <div className="flex items-center gap-4">
                       <span className="flex items-center gap-1.5 text-[#9e9ea7]">
-                        <Calendar className="w-3 h-3 text-[#71717a]" />
+                        <Calendar className="w-3 h-3 text-[#9e9ea7]" />
                         {totalCount} {totalCount === 1 ? 'milestone' : 'milestones'}
                       </span>
                       {totalCount > 0 && (
@@ -144,7 +144,7 @@ export const ArchivedTracksModal: React.FC<ArchivedTracksModalProps> = ({
 
         {/* Modal Footer */}
         <div className="px-6 py-3.5 border-t border-[#222328] bg-[#101114] flex items-center justify-between">
-          <span className="text-xs text-[#71717a] font-mono">
+          <span className="text-xs text-[#9e9ea7] font-mono">
             {archivedTimelines.length} archived
           </span>
           <button

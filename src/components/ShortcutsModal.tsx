@@ -87,7 +87,7 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
               <div className="font-semibold text-sm tracking-tight text-[#ececf0]">
                 Keyboard Shortcuts
               </div>
-              <div className="text-[10px] text-[#71717a]">
+              <div className="text-[10px] text-[#9e9ea7]">
                 Navigate and manage your timelines faster with hotkeys
               </div>
             </div>
@@ -95,7 +95,7 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-md text-[#71717a] hover:text-[#ececf0] hover:bg-[#202128] transition-colors"
+            className="p-1.5 rounded-md text-[#9e9ea7] hover:text-[#ececf0] hover:bg-[#202128] transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -105,7 +105,7 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
         <div className="p-5 max-h-[75vh] overflow-y-auto space-y-6">
           {SHORTCUT_CATEGORIES.map(category => (
             <div key={category.title} className="space-y-2.5">
-              <div className="text-[11px] uppercase tracking-wider text-[#71717a] font-semibold border-b border-[#222328] pb-1">
+              <div className="text-[11px] uppercase tracking-wider text-[#9e9ea7] font-semibold border-b border-[#222328] pb-1">
                 {category.title}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -135,9 +135,9 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Footer info */}
-        <div className="px-5 py-3 border-t border-[#222328] bg-[#121316] flex items-center justify-between text-[11px] text-[#71717a]">
+        <div className="px-5 py-3 border-t border-[#222328] bg-[#121316] flex items-center justify-between text-[11px] text-[#9e9ea7]">
           <div className="flex items-center gap-1.5">
-            <Command className="w-3.5 h-3.5 text-[#555762]" />
+            <Command className="w-3.5 h-3.5 text-[#9e9ea7]" />
             <span>Shortcuts are disabled while typing in text inputs</span>
           </div>
           <div className="font-mono text-[10px]">

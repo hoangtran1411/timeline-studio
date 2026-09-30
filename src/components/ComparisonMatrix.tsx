@@ -134,7 +134,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
       default:
         return (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#141519] border border-[#2a2b32] text-[#9e9ea7] text-[10px]">
-            <Clock className="w-2.5 h-2.5 text-[#71717a]" />
+            <Clock className="w-2.5 h-2.5 text-[#9e9ea7]" />
             <span>Planned</span>
           </span>
         );
@@ -170,13 +170,13 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
             <>
               {/* Search input */}
               <div className="relative flex items-center">
-                <Search className="w-3 h-3 text-[#6b6c75] absolute left-2 pointer-events-none" />
+                <Search className="w-3 h-3 text-[#9e9ea7] absolute left-2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter records..."
-                  className="w-28 sm:w-36 md:w-44 bg-[#18191e] border border-[#2a2b32] rounded pl-7 pr-2 py-1 text-[11px] text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
+                  className="w-28 sm:w-36 md:w-44 bg-[#18191e] border border-[#2a2b32] rounded pl-7 pr-2 py-1 text-[11px] text-[#ececf0] placeholder-[#9e9ea7] focus:outline-none focus:border-[#454754]"
                 />
               </div>
 
@@ -205,7 +205,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                           style={{ backgroundColor: activeTrack.color || '#ececf0' }}
                         />
                         <span className="truncate max-w-[110px] sm:max-w-[150px]">{activeTrack.title}</span>
-                        <span className="text-[10px] text-[#6b6c75] flex-shrink-0">({activeTrack.nodes.length})</span>
+                        <span className="text-[10px] text-[#9e9ea7] flex-shrink-0">({activeTrack.nodes.length})</span>
                       </>
                     ) : (
                       <>
@@ -242,13 +242,13 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                     {/* Search box if > 5 tracks */}
                     {timelines.length > 5 && (
                       <div className="relative px-1 pt-1 pb-1">
-                        <Search className="w-3 h-3 absolute left-3 top-3 text-[#6b6c75] pointer-events-none" />
+                        <Search className="w-3 h-3 absolute left-3 top-3 text-[#9e9ea7] pointer-events-none" />
                         <input
                           type="text"
                           value={trackSearchQuery}
                           onChange={(e) => setTrackSearchQuery(e.target.value)}
                           placeholder="Search tracks..."
-                          className="w-full pl-7 pr-2 py-1 text-[11px] bg-[#101114] border border-[#2a2b32] rounded text-[#ececf0] placeholder-[#6b6c75] focus:outline-none focus:border-[#454754]"
+                          className="w-full pl-7 pr-2 py-1 text-[11px] bg-[#101114] border border-[#2a2b32] rounded text-[#ececf0] placeholder-[#9e9ea7] focus:outline-none focus:border-[#454754]"
                           autoFocus
                         />
                       </div>
@@ -272,7 +272,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                         <span>All Tracks</span>
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] text-[#6b6c75]">({allNodesWithTrack.length})</span>
+                        <span className="text-[10px] text-[#9e9ea7]">({allNodesWithTrack.length})</span>
                         {activeTrackTab === 'all' && <Check className="w-3 h-3 text-white" />}
                       </div>
                     </button>
@@ -306,14 +306,14 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                                 <span className="truncate">{track.title}</span>
                               </div>
                               <div className="flex items-center gap-1.5 flex-shrink-0">
-                                <span className="text-[10px] text-[#6b6c75]">({track.nodes.length})</span>
+                                <span className="text-[10px] text-[#9e9ea7]">({track.nodes.length})</span>
                                 {isSelected && <Check className="w-3 h-3 text-white" />}
                               </div>
                             </button>
                           );
                         })
                       ) : (
-                        <div className="py-3 text-center text-[10px] text-[#6b6c75]">
+                        <div className="py-3 text-center text-[10px] text-[#9e9ea7]">
                           No tracks match &quot;{trackSearchQuery}&quot;
                         </div>
                       )}
@@ -467,7 +467,7 @@ export const ComparisonMatrix: React.FC<ComparisonMatrixProps> = ({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-[#71717a]">
+                    <td colSpan={9} className="py-8 text-center text-[#9e9ea7]">
                       No milestones match the current filter or search criteria.
                     </td>
                   </tr>

@@ -165,7 +165,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               <Edit3 className="w-3.5 h-3.5 text-[#9e9ea7]" />
               <span>Edit Milestone Details</span>
             </span>
-            <span className="text-[10px] text-[#71717a] font-mono">Enter</span>
+            <span className="text-[10px] text-[#9e9ea7] font-mono">Enter</span>
           </button>
 
           <button
@@ -179,7 +179,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               <Copy className="w-3.5 h-3.5 text-[#9e9ea7]" />
               <span>Duplicate (+7 Days)</span>
             </span>
-            <span className="text-[10px] text-[#71717a] font-mono">D</span>
+            <span className="text-[10px] text-[#9e9ea7] font-mono">D</span>
           </button>
 
           <button
@@ -193,13 +193,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               <GitBranch className="w-3.5 h-3.5 text-[#9e9ea7]" />
               <span>Branch New Track Here</span>
             </span>
-            <span className="text-[10px] text-[#71717a] font-mono">B</span>
+            <span className="text-[10px] text-[#9e9ea7] font-mono">B</span>
           </button>
 
           {/* Quick Status Switcher Grid */}
           <div className="my-1 border-t border-[#242632]" />
           <div className="px-3 py-1">
-            <span className="text-[10px] text-[#71717a] uppercase font-mono tracking-wider block mb-1.5">
+            <span className="text-[10px] text-[#9e9ea7] uppercase font-mono tracking-wider block mb-1.5">
               Set Status
             </span>
             <div className="grid grid-cols-2 gap-1 font-mono text-[10px]">
@@ -214,7 +214,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                     : 'bg-[#1b1c23] hover:bg-[#252733] text-[#9e9ea7]'
                 }`}
               >
-                <Clock className="w-2.5 h-2.5 text-[#71717a]" />
+                <Clock className="w-2.5 h-2.5 text-[#9e9ea7]" />
                 <span>Planned</span>
               </button>
 
@@ -311,7 +311,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Insert Node in Gap</span>
               </span>
-              <span className="text-[10px] text-[#71717a] font-mono">Between</span>
+              <span className="text-[10px] text-[#9e9ea7] font-mono">Between</span>
             </button>
           ) : (
             <button
@@ -325,7 +325,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 <Plus className="w-3.5 h-3.5 text-[#9e9ea7]" />
                 <span>Add Milestone Here</span>
               </span>
-              <span className="text-[10px] text-[#71717a] font-mono">+N</span>
+              <span className="text-[10px] text-[#9e9ea7] font-mono">+N</span>
             </button>
           )}
 
@@ -344,7 +344,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 <Maximize2 className="w-3.5 h-3.5 text-[#9e9ea7]" />
                 <span>Track All (Clear Focus)</span>
               </span>
-              <span className="text-[10px] text-[#71717a] font-mono">Esc</span>
+              <span className="text-[10px] text-[#9e9ea7] font-mono">Esc</span>
             </button>
           ) : (
             <button
@@ -358,7 +358,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 <Eye className="w-3.5 h-3.5 text-[#9e9ea7]" />
                 <span>Focus This Track</span>
               </span>
-              <span className="text-[10px] text-[#71717a] font-mono">Solo</span>
+              <span className="text-[10px] text-[#9e9ea7] font-mono">Solo</span>
             </button>
           )}
 
@@ -430,7 +430,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               <Layers className="w-3.5 h-3.5 text-emerald-400" />
               <span className="font-medium text-emerald-300">Add Timeline Tracker</span>
             </span>
-            <span className="text-[10px] text-[#71717a] font-mono">+T</span>
+            <span className="text-[10px] text-[#9e9ea7] font-mono">+T</span>
           </button>
 
           {selectedTrackId && (
@@ -462,7 +462,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
                 <SkipBack className="w-3.5 h-3.5 text-[#9e9ea7]" />
                 <span>Jump to Beginning</span>
               </span>
-              <span className="text-[10px] text-[#71717a] font-mono">Start</span>
+              <span className="text-[10px] text-[#9e9ea7] font-mono">Start</span>
             </button>
           )}
 
@@ -477,7 +477,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               <Calendar className="w-3.5 h-3.5 text-[#9e9ea7]" />
               <span>Jump to Today</span>
             </span>
-            <span className="text-[10px] text-[#71717a] font-mono">Today</span>
+            <span className="text-[10px] text-[#9e9ea7] font-mono">Today</span>
           </button>
 
           <button
@@ -491,7 +491,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
               <RotateCcw className="w-3.5 h-3.5 text-[#9e9ea7]" />
               <span>Reset Zoom (100%)</span>
             </span>
-            <span className="text-[10px] text-[#71717a] font-mono">1:1</span>
+            <span className="text-[10px] text-[#9e9ea7] font-mono">1:1</span>
           </button>
         </>
       )}
