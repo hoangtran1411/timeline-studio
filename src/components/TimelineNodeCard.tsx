@@ -39,7 +39,7 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
   onDelete,
   onMoveNode,
   onContextMenu,
-  onPreviewImages: _onPreviewImages,
+  onPreviewImages,
   onUpdateCustomWidth
 }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -443,6 +443,29 @@ const TimelineNodeCardComponent: React.FC<TimelineNodeCardProps> = ({
         {node.description && (
           <div className="text-[11px] text-[#9e9ea7] line-clamp-1 mt-0.5 font-normal">
             {node.description}
+          </div>
+        )}
+
+        {/* Attachment Cover Image Preview */}
+        {Boolean(node.imageUrl || (node.imageUrls && node.imageUrls.length > 0)) && (
+          <div
+            className="mt-2 rounded overflow-hidden h-20 w-full bg-[#0a0a0c] border border-[#222328] relative group/thumb cursor-pointer select-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              const imgs = (node.imageUrls && node.imageUrls.length > 0)
+                ? node.imageUrls
+                : (node.imageUrl ? [node.imageUrl] : []);
+              onPreviewImages?.(imgs, 0);
+            }}
+            title="Click to view image attachment"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={node.imageUrl || node.imageUrls?.[0]}
+              alt={node.title}
+              className="w-full h-full object-cover group-hover/thumb:scale-105 transition-transform duration-200"
+              loading="lazy"
+            />
           </div>
         )}
 

@@ -188,7 +188,23 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
       }
 
       if (uploadedUrls.length > 0) {
-        setImageUrls(prev => [...prev, ...uploadedUrls].slice(0, 4));
+        const nextUrls = [...imageUrls, ...uploadedUrls].slice(0, 4);
+        setImageUrls(nextUrls);
+        if (node?.id) {
+          void onSave({
+            id: node.id,
+            timelineId,
+            title: title.trim() || node.title,
+            description: description.trim() || undefined,
+            startDate,
+            endDate: endDate || null,
+            status,
+            priority,
+            tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+            imageUrl: nextUrls[0] || null,
+            imageUrls: nextUrls
+          });
+        }
       }
       if (anyReused) {
         setImageReusedNotice('Identical image matched by SHA-256 hash. Reused existing storage reference.');
@@ -205,8 +221,24 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
   };
 
   const handleRemoveImage = (indexToRemove: number) => {
-    setImageUrls(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    const nextUrls = imageUrls.filter((_, idx) => idx !== indexToRemove);
+    setImageUrls(nextUrls);
     setImageUploadError(null);
+    if (node?.id) {
+      void onSave({
+        id: node.id,
+        timelineId,
+        title: title.trim() || node.title,
+        description: description.trim() || undefined,
+        startDate,
+        endDate: endDate || null,
+        status,
+        priority,
+        tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+        imageUrl: nextUrls[0] || null,
+        imageUrls: nextUrls
+      });
+    }
   };
 
   const handleAddUrlImage = () => {
@@ -216,10 +248,26 @@ const NodeDrawerContent: React.FC<NodeDrawerProps> = ({
       setImageUploadError('Maximum of 4 images allowed per node');
       return;
     }
-    setImageUrls(prev => [...prev, trimmed].slice(0, 4));
+    const nextUrls = [...imageUrls, trimmed].slice(0, 4);
+    setImageUrls(nextUrls);
     setCustomUrlInput('');
     setShowUrlInput(false);
     setImageUploadError(null);
+    if (node?.id) {
+      void onSave({
+        id: node.id,
+        timelineId,
+        title: title.trim() || node.title,
+        description: description.trim() || undefined,
+        startDate,
+        endDate: endDate || null,
+        status,
+        priority,
+        tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+        imageUrl: nextUrls[0] || null,
+        imageUrls: nextUrls
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -330,21 +330,44 @@ export function TimelineStudioClient({ initialProjects, initialData }: TimelineS
 
   // Handler: Save Node (Create or Edit)
   const handleSaveNode = async (nodeData: Partial<TimelineNode> & { id?: string }) => {
+    // Optimistic update for immediate visual feedback without waiting for network or F5
     if (nodeData.id) {
-      await fetch(`/api/nodes/${nodeData.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nodeData)
-      });
-    } else {
-      await fetch('/api/nodes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nodeData)
-      });
+      setData(prev => ({
+        ...prev,
+        timelines: prev.timelines.map(track => ({
+          ...track,
+          nodes: track.nodes.map(node =>
+            node.id === nodeData.id
+              ? { ...node, ...nodeData }
+              : node
+          )
+        }))
+      }));
+      if (selectedNode?.id === nodeData.id) {
+        setSelectedNode(prev => prev ? { ...prev, ...nodeData } : null);
+      }
     }
-    await fetchData();
-    await fetchProjects();
+
+    try {
+      if (nodeData.id) {
+        await fetch(`/api/nodes/${nodeData.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nodeData)
+        });
+      } else {
+        await fetch('/api/nodes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nodeData)
+        });
+      }
+    } catch (err) {
+      console.error('Failed to save node:', err);
+    } finally {
+      await fetchData();
+      await fetchProjects();
+    }
   };
 
   // Handler: Delete Node
