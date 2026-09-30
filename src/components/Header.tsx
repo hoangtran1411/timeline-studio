@@ -115,9 +115,9 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm tracking-tight text-[#ececf0] whitespace-nowrap">
+                <h1 className="font-semibold text-sm tracking-tight text-[#ececf0] whitespace-nowrap">
                   Timeline Studio
-                </span>
+                </h1>
                 <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#2a2b32] bg-[#16171b] text-[#9e9ea7] hidden xl:flex items-center gap-1 font-mono">
                   <Database className="w-2.5 h-2.5 text-[#71717a]" />
                   SQLite
